@@ -97,8 +97,6 @@ window.__MOCK__ = {
 const state = {
   taskId: null,
   result: null,
-  // 记录本次提交的来源（用于历史卡片显示），由 handleFile / handleUrl 设置
-  pendingSource: null,
   chatHistory: [],
   quiz: {
     idx: 0,
@@ -108,75 +106,6 @@ const state = {
   },
   selectedConcept: null,
 };
-
-/* ---------- localStorage 历史记录 ---------- */
-const HISTORY_KEY = "dyhk_history_v1";
-const HISTORY_MAX = 20;
-
-function loadHistory() {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
-  } catch (e) {
-    console.warn("history corrupted, reset", e);
-    return [];
-  }
-}
-
-function writeHistory(arr) {
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
-  } catch (e) {
-    console.warn("history write failed", e);
-  }
-}
-
-function saveHistoryItem(item) {
-  const arr = loadHistory().filter((x) => x.id !== item.id);
-  arr.unshift(item);
-  while (arr.length > HISTORY_MAX) arr.pop();
-  writeHistory(arr);
-}
-
-function deleteHistoryItem(id) {
-  writeHistory(loadHistory().filter((x) => x.id !== id));
-}
-
-function clearHistory() {
-  writeHistory([]);
-}
-
-/* 把分析完成的结果保存为一条历史记录。
-   只在真实分析结束（listenProgress / fetchResult）时调用，
-   不在点击历史卡片时调用（那只是重新渲染）。 */
-function saveCurrentAnalysis(data) {
-  if (!data) return;
-  const item = {
-    id: state.taskId || `local-${Date.now()}`,
-    title: data.title || (state.pendingSource?.value ?? "未命名视频"),
-    source_type: state.pendingSource?.type || "unknown",
-    source_value: state.pendingSource?.value || "",
-    savedAt: Date.now(),
-    result: data,
-  };
-  saveHistoryItem(item);
-  renderHistory();
-  state.pendingSource = null;
-}
-
-function formatRelativeTime(ts) {
-  const diff = Math.max(0, Date.now() - ts);
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "刚刚";
-  if (min < 60) return `${min} 分钟前`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} 小时前`;
-  const day = Math.floor(hr / 24);
-  if (day < 30) return `${day} 天前`;
-  return new Date(ts).toLocaleDateString("zh-CN");
-}
 
 /* ---------- DOM 引用 ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -190,8 +119,10 @@ document.addEventListener("DOMContentLoaded", () => {
   bindTabs();
   bindChat();
   bindBack();
-  bindHistoryClear();
-  renderHistory();
+  loadDemos();
+  // 骨架阶段：直接用 mock 渲染一次，方便看样式
+  // 真实流程下,这一行可以注释掉
+  // renderResult(window.__MOCK__);
 });
 
 /* ============================================================
@@ -320,70 +251,44 @@ function buildMarkdown(d) {
 }
 
 /* ============================================================
- * 我的历史记录（来自 localStorage）
+ * 预置 demo
  * ============================================================ */
-function renderHistory() {
+async function loadDemos() {
   const list = $("#demo-list");
-  const clearBtn = $("#history-clear");
-  const items = loadHistory();
-
-  if (!items.length) {
-    // 空状态：还没解析过任何视频
-    clearBtn?.classList.add("hidden");
-    list.innerHTML = `
-      <div class="col-span-full text-center py-10 text-white/30 text-sm">
-        <div class="text-3xl mb-2">📭</div>
-        <div>你还没有解析过视频</div>
-        <div class="text-xs mt-1 text-white/20">上传或粘贴一个链接试试吧</div>
-      </div>`;
-    return;
+  let demos = [];
+  try {
+    const res = await fetch("/api/demos");
+    if (res.ok) demos = await res.json();
+  } catch (e) {
+    // 后端不可用时用 mock
   }
-
-  clearBtn?.classList.remove("hidden");
-  list.innerHTML = items
+  if (!demos.length) {
+    demos = [
+      { id: "mock-1", title: "黑洞为什么不会发光", thumb: "", cached_result: window.__MOCK__ },
+      { id: "mock-2", title: "为什么天空是蓝的", thumb: "", cached_result: window.__MOCK__ },
+      { id: "mock-3", title: "DNA 双螺旋的秘密", thumb: "", cached_result: window.__MOCK__ },
+      { id: "mock-4", title: "相对论入门 10 分钟", thumb: "", cached_result: window.__MOCK__ },
+    ];
+  }
+  list.innerHTML = demos
     .map(
-      (it, i) => `
-      <div class="demo-card relative group" data-idx="${i}">
-        <button class="history-del absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 text-white/60 opacity-0 group-hover:opacity-100 transition text-xs"
-                data-id="${escapeHtml(it.id)}" title="删除这条记录">×</button>
-        <div class="demo-thumb flex items-center justify-center text-2xl">🎬</div>
-        <div class="demo-title">${escapeHtml(it.title)}</div>
-        <div class="text-xs text-white/30 mt-1">${formatRelativeTime(it.savedAt)}</div>
+      (d, i) => `
+      <div class="demo-card" data-idx="${i}">
+        <div class="demo-thumb flex items-center justify-center text-2xl">
+          ${d.thumb ? `<img src="${d.thumb}" class="demo-thumb" alt="" />` : "🎬"}
+        </div>
+        <div class="demo-title">${escapeHtml(d.title)}</div>
       </div>`
     )
     .join("");
-
-  // 点击卡片：还原结果面板
   list.querySelectorAll(".demo-card").forEach((el) => {
-    el.addEventListener("click", (ev) => {
-      // 点 × 按钮不要触发卡片点击
-      if (ev.target.classList.contains("history-del")) return;
+    el.addEventListener("click", () => {
       const idx = +el.dataset.idx;
-      const it = items[idx];
-      if (!it) return;
-      state.taskId = it.id;
-      renderResult(it.result);
+      const d = demos[idx];
+      // 预置案例：直接渲染，不走 analyze
+      state.taskId = d.id;
+      renderResult(d.cached_result);
     });
-  });
-
-  // 点 ×：删除单条
-  list.querySelectorAll(".history-del").forEach((btn) => {
-    btn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      const id = btn.dataset.id;
-      deleteHistoryItem(id);
-      renderHistory();
-    });
-  });
-}
-
-function bindHistoryClear() {
-  const btn = $("#history-clear");
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    if (!confirm("确定清空所有历史记录？")) return;
-    clearHistory();
-    renderHistory();
   });
 }
 
@@ -391,8 +296,6 @@ function bindHistoryClear() {
  * 上传 & URL 提交
  * ============================================================ */
 async function handleFile(file) {
-  // 记录来源，分析完成后会写进历史
-  state.pendingSource = { type: "file", value: file.name };
   showProgressOverlay();
   setStage("uploading", 0, `正在上传 ${file.name}…`);
   const fd = new FormData();
@@ -411,7 +314,6 @@ async function handleFile(file) {
 }
 
 async function handleUrl(url) {
-  state.pendingSource = { type: "url", value: url };
   showProgressOverlay();
   setStage("uploading", 5, "正在解析链接…");
   try {
@@ -454,12 +356,8 @@ function listenProgress(taskId) {
       setStage(data.stage, data.percent || 0, data.message || "");
       if (data.stage === "done") {
         es.close();
-        if (data.result) {
-          renderResult(data.result);
-          saveCurrentAnalysis(data.result);
-        } else {
-          fetchResult(taskId);
-        }
+        if (data.result) renderResult(data.result);
+        else fetchResult(taskId);
       } else if (data.stage === "error") {
         es.close();
         alert("分析失败：" + (data.error || "未知错误"));
@@ -480,11 +378,7 @@ async function fetchResult(taskId) {
   try {
     const res = await fetch(`/api/result/${taskId}`);
     const data = await res.json();
-    // 后端 /api/result 返回的是包装层 { task_id, stage, result, ... }，
-    // 真正的分析结果在 result 字段里；老路径返回的就是 data 本身
-    const payload = data?.result ?? data;
-    renderResult(payload);
-    saveCurrentAnalysis(payload);
+    renderResult(data);
   } catch (e) {
     renderResult(window.__MOCK__);
   }
