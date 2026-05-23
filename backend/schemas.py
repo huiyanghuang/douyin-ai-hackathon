@@ -72,7 +72,8 @@ GEMINI_RESPONSE_SCHEMA: dict[str, Any] = {
 
 
 class ChatTurn(BaseModel):
-    role: Literal["user", "model"]
+    # 前端发 "assistant"（Web/LLM 通用术语），Gemini 内部叫 "model"，两个都接，统一在 chat_service 里转。
+    role: Literal["user", "assistant", "model"]
     text: str
 
 
