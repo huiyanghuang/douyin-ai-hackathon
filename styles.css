@@ -549,15 +549,38 @@ body {
   cursor: default;
 }
 .quiz-option.correct {
-  background: rgba(34, 197, 94, 0.18);
-  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.22);
+  border-color: #22c55e !important;
+  border-width: 3px !important;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18),
+              0 4px 16px rgba(34, 197, 94, 0.25);
+  opacity: 1 !important;
+}
+.quiz-option.correct::after {
+  content: " ✓ 正确答案";
+  margin-left: auto;
+  padding-left: 12px;
+  color: #86efac;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+/* 答错时给正确答案加 pulse 提醒一下视线 */
+.quiz-option.correct.reveal-pulse {
+  animation: correct-reveal 1.4s ease-out 1;
+}
+@keyframes correct-reveal {
+  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  50%  { box-shadow: 0 0 0 14px rgba(34, 197, 94, 0); transform: translateX(2px); }
+  100% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18); }
 }
 .quiz-option.wrong {
   background: rgba(239, 68, 68, 0.15);
-  border-color: #ef4444;
+  border-color: #ef4444 !important;
+  border-width: 3px !important;
 }
 .quiz-option.dim {
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
 /* ========== Demo 卡片 ========== */

@@ -2207,9 +2207,15 @@ function answerQuiz(letter, item) {
   const letters = ["A", "B", "C", "D"];
   $$("#quiz-options .quiz-option").forEach((btn, i) => {
     btn.disabled = true;
-    if (letters[i] === item.answer) btn.classList.add("correct");
-    else if (letters[i] === letter) btn.classList.add("wrong");
-    else btn.classList.add("dim");
+    if (letters[i] === item.answer) {
+      btn.classList.add("correct");
+      // 答错时给正确答案加 pulse 让眼睛知道在哪
+      if (!ok) btn.classList.add("reveal-pulse");
+    } else if (letters[i] === letter) {
+      btn.classList.add("wrong");
+    } else {
+      btn.classList.add("dim");
+    }
   });
   const fb = $("#quiz-feedback");
   fb.classList.remove("hidden");
