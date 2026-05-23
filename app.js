@@ -137,6 +137,8 @@ const state = {
   },
   // 用户认证：登录后 { user: {id, username}, token }；未登录 null
   auth: { user: null, token: null },
+  // 图谱布局："force" 力导向 / "radial" 径向 mindmap
+  graphLayout: "force",
 };
 
 /* ---------- 概念层级（从 explanation 前缀 [核心]/[分支]/[细节] 提取） ---------- */
@@ -172,10 +174,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   bindBack();
   bindHistoryClear();
   bindAuthModal();
+  bindLayoutSwitcher();
   await bootstrapAuth();   // 启动时尝试恢复登录
   renderUserBar();
   renderHistory();
 });
+
+function bindLayoutSwitcher() {
+  document.querySelectorAll(".layout-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lay = btn.dataset.layout;
+      if (!state.result || lay === state.graphLayout) return;
+      state.graphLayout = lay;
+      document.querySelectorAll(".layout-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      renderGraph();
+    });
+  });
+}
 
 /* ============================================================
  * 输入区
@@ -618,6 +633,128 @@ async function logoutUser() {
 }
 
 /* ============================================================
+ * 「猜你想看」：进结果页就在右侧 panel 渲染 AI 延伸关键词
+ * ============================================================ */
+async function loadRecommendPanel() {
+  if (!state.result) return;
+  const body = $("#recommend-body");
+  if (!body) return;
+  const subtitle = $("#recommend-subtitle");
+  const footer = $("#recommend-footer");
+
+  if (subtitle) subtitle.textContent = "AI 正在想下一个该看的方向…";
+  body.innerHTML = `
+    <div class="rec-loading">
+      <span class="rec-loading-dot"></span><span class="rec-loading-dot"></span><span class="rec-loading-dot"></span>
+    </div>`;
+
+  try {
+    const data = await fetchRecommend();
+    if (subtitle) {
+      subtitle.textContent = data.source === "gemini"
+        ? "看完这段，AI 觉得你还想搜这些"
+        : "用视频里的延伸问题给你做了候选";
+    }
+    if (footer) {
+      footer.textContent = data.source === "gemini"
+        ? "关键词由 Gemini 提炼"
+        : "由视频分析结果生成";
+    }
+    body.innerHTML = renderRecommendItems(data.items);
+  } catch (e) {
+    console.warn("recommend failed:", e);
+    // Gemini 不可达：用 follow_up_questions / key_concepts 本地兜底
+    const items = buildLocalRecommendItems(state.result);
+    if (subtitle) subtitle.textContent = "AI 暂不可用，从视频里挑了几个延伸点";
+    if (footer) footer.textContent = "本地兜底";
+    body.innerHTML = items.length
+      ? renderRecommendItems(items)
+      : `<div class="rec-loading text-xs">没有可推荐的关键词</div>`;
+  }
+}
+
+async function fetchRecommend() {
+  const body = { task_id: state.taskId };
+  if (state.fromHistory && state.result) body.analysis = state.result;
+  // mock task_id（"mock-1" 这种）后端会找不到 task → 直接带 analysis
+  if (typeof state.taskId === "string" && state.taskId.startsWith("mock-")) {
+    body.analysis = state.result;
+  }
+  const res = await fetch("/api/recommend", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...authHeaders() },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return await res.json();
+}
+
+function renderRecommendItems(items) {
+  if (!items || !items.length) {
+    return `<div class="rec-loading text-xs">AI 暂时没找到合适的延伸方向</div>`;
+  }
+  return items.map((it) => {
+    const v = it.bilibili_video;
+    return `
+      <div class="rec-row">
+        <div class="rec-kw"># ${escapeHtml(it.keyword)}</div>
+        ${v ? `
+          <a class="rec-video-card" target="_blank" rel="noopener noreferrer"
+             href="${escapeHtml(v.url)}"
+             title="${escapeHtml(v.reason || v.title)}">
+            <div class="rec-video-cover">
+              ${v.cover ? `<img src="${escapeHtml(v.cover)}" alt="" referrerpolicy="no-referrer" loading="lazy"
+                              onerror="this.style.display='none';this.parentElement.classList.add('rec-cover-fallback');" />` : ''}
+              <span class="rec-cover-placeholder">B 站</span>
+            </div>
+            <div class="rec-video-meta">
+              <div class="rec-video-title">${escapeHtml(v.title)}</div>
+              <div class="rec-video-sub">
+                ${v.author ? `<span class="rec-author">${escapeHtml(v.author)}</span>` : ''}
+                ${v.view ? `<span class="rec-sep">·</span><span>${formatView(v.view)}</span>` : ''}
+                ${typeof v.score === 'number' ? `<span class="rec-sep">·</span><span class="rec-score">匹配 ${v.score}</span>` : ''}
+              </div>
+            </div>
+          </a>` : ''}
+        <div class="rec-links">
+          <a class="rec-link rec-bilibili" target="_blank" rel="noopener noreferrer" href="${escapeHtml(it.bilibili_search_url)}">B 站${v ? '搜更多' : '搜'}</a>
+          ${it.douyin_url ? `<a class="rec-link rec-douyin" target="_blank" rel="noopener noreferrer" href="${escapeHtml(it.douyin_url)}">抖音搜</a>` : ''}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function formatView(n) {
+  n = Number(n) || 0;
+  if (n >= 10000) return (n / 10000).toFixed(n >= 100000 ? 0 : 1) + " 万";
+  return String(n);
+}
+
+function buildLocalRecommendItems(result) {
+  const kws = [];
+  const seen = new Set();
+  for (const q of (result.follow_up_questions || []).slice(0, 3)) {
+    const k = (q || "").trim().replace(/[？?。.！!]+$/g, "");
+    if (k && k.length >= 2 && k.length <= 16 && !seen.has(k)) {
+      kws.push(k); seen.add(k);
+    }
+  }
+  for (const c of (result.key_concepts || []).slice(0, 6)) {
+    const k = (c.name || "").trim();
+    if (k && k.length >= 2 && k.length <= 12 && !seen.has(k)) {
+      kws.push(k); seen.add(k);
+    }
+    if (kws.length >= 5) break;
+  }
+  return kws.slice(0, 5).map((kw) => ({
+    keyword: kw,
+    bilibili_video: null,  // 本地兜底没有真实搜索结果
+    bilibili_search_url: `https://search.bilibili.com/all?keyword=${encodeURIComponent(kw)}`,
+    douyin_url: `https://www.douyin.com/search/${encodeURIComponent(kw)}`,
+  }));
+}
+
+/* ============================================================
  * 上传 & URL 提交
  * ============================================================ */
 async function handleFile(file) {
@@ -880,10 +1017,11 @@ function renderResult(data) {
     // Tab 4 测验
     renderQuiz();
 
-    // 整合视图：左侧筛选 + 右侧概念清单
+    // 图谱左栏筛选（节点/连线分级显示）
     renderFilterPanel();
-    renderConceptListPanel();
-    updateLearnProgress();
+
+    // 「猜你想看」：进结果页就在右栏渲染
+    loadRecommendPanel();
   } catch (err) {
     console.error("renderResult failed:", err);
     hideProgressOverlay();
@@ -986,6 +1124,16 @@ function renderGraph(highlightName) {
   $("#graph-tour-bar")?.classList.add("hidden");
   const legendEl = $("#graph-legend");
   if (legendEl) legendEl.innerHTML = "";
+
+  // 同步 layout 按钮的 active 态（首次进入或切换 demo 时）
+  document.querySelectorAll(".layout-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.layout === state.graphLayout)
+  );
+
+  // 径向 mindmap 模式
+  if (state.graphLayout === "radial") {
+    return renderRadialGraph(highlightName);
+  }
 
   const svg = d3.select("#graph-svg");
   svg.selectAll("*").remove();
@@ -1265,6 +1413,286 @@ function renderGraph(highlightName) {
   if (highlightName) {
     setTimeout(() => _graphApi && _graphApi.pulse(highlightName), 250);
   }
+}
+
+/* ============================================================
+ * 径向 mindmap：root(视频主题) → core 节点 → 分支/细节
+ * 用 d3.cluster() 算坐标，d3.linkRadial() 画曲线
+ * ============================================================ */
+function renderRadialGraph(highlightName) {
+  const svg = d3.select("#graph-svg");
+  svg.selectAll("*").remove();
+
+  const concepts = state.result.key_concepts || [];
+  const rels = state.result.concept_relations || [];
+  if (!concepts.length) {
+    svg.append("text")
+      .attr("x", "50%").attr("y", "50%")
+      .attr("text-anchor", "middle")
+      .attr("fill", "rgba(255,255,255,0.4)")
+      .text("该视频没有提取出概念");
+    _graphApi = null;
+    return;
+  }
+
+  // 准备节点数据（同 force 版逻辑：level + score）
+  const nodes = concepts.map((c) => {
+    const lv = extractLevel(c.explanation);
+    return {
+      id: c.name,
+      explanation: cleanExplanation(c.explanation),
+      analogy: c.analogy,
+      level: lv,
+    };
+  });
+  const links = rels
+    .map((r) => ({
+      source: r.from,
+      target: r.to,
+      relation: r.relation,
+      type: classifyRelation(r.relation),
+    }))
+    .filter((l) => nodes.find((n) => n.id === l.source) && nodes.find((n) => n.id === l.target));
+
+  // 度数 + key_points 提及打 score（决定 root 选择和 fallback 分级）
+  const keyPoints = state.result.key_points || [];
+  const mentions = {};
+  const degrees = {};
+  nodes.forEach((n) => { mentions[n.id] = 0; degrees[n.id] = 0; });
+  keyPoints.forEach((kp) => {
+    nodes.forEach((n) => { if (kp.point && kp.point.includes(n.id)) mentions[n.id]++; });
+  });
+  links.forEach((l) => {
+    degrees[l.source] = (degrees[l.source] || 0) + 1;
+    degrees[l.target] = (degrees[l.target] || 0) + 1;
+  });
+  const maxRaw = Math.max(...nodes.map((n) => degrees[n.id] * 1.5 + mentions[n.id] * 1.2), 1);
+  nodes.forEach((n) => {
+    n.score = (degrees[n.id] * 1.5 + mentions[n.id] * 1.2) / maxRaw;
+    n.isCore = n.level === "core" || (!n.level && n.score >= 0.7);
+  });
+
+  const tree = buildRadialHierarchy(nodes, links);
+  const root = d3.hierarchy(tree);
+
+  const width = svg.node().clientWidth || 800;
+  const height = +svg.attr("height") || svg.node().clientHeight || 600;
+  svg.attr("viewBox", `0 0 ${width} ${height}`);
+
+  const radius = Math.min(width, height) / 2 - 90;
+  d3.cluster().size([2 * Math.PI, radius])(root);
+
+  // 缩放/平移容器，内部以画布中心为原点（方便 d3.linkRadial 直接画）
+  const container = svg.append("g").attr("class", "graph-zoom");
+  svg.call(
+    d3.zoom().scaleExtent([0.5, 2.5])
+      .filter((event) => !event.target.closest(".node"))
+      .on("zoom", (event) => container.attr("transform", event.transform))
+  );
+  // 把中心移到画布正中
+  const root_g = container.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
+
+  // ----- 链接（root → core 不画；core → leaf 画曲线） -----
+  const visibleLinks = root.links().filter((l) => !l.source.data.isRoot);
+  const linkPath = d3.linkRadial().angle((d) => d.x).radius((d) => d.y);
+  const link = root_g.append("g")
+    .attr("class", "links")
+    .attr("fill", "none")
+    .attr("stroke", "#4b5169")
+    .attr("stroke-opacity", 0.55)
+    .attr("stroke-width", 1.5)
+    .selectAll("path")
+    .data(visibleLinks)
+    .join("path")
+    .attr("class", "link link-radial")
+    .attr("d", linkPath);
+
+  // ----- 节点（跳过虚拟 root） -----
+  const visibleNodes = root.descendants().filter((d) => !d.data.isRoot);
+  const radialPoint = (d) => {
+    const a = d.x - Math.PI / 2;
+    return [Math.cos(a) * d.y, Math.sin(a) * d.y];
+  };
+
+  const node = root_g.append("g").attr("class", "nodes")
+    .selectAll("g")
+    .data(visibleNodes)
+    .join("g")
+    .attr("class", (d) => "node radial-node" + (d.data.data?.isCore ? " is-core" : ""))
+    .attr("data-concept", (d) => d.data.id)
+    .attr("transform", (d) => {
+      const [x, y] = radialPoint(d);
+      return `translate(${x},${y})`;
+    });
+
+  // 节点圆
+  node.append("circle")
+    .attr("r", (d) => {
+      const data = d.data.data;
+      const lv = data?.level;
+      if (lv === "core") return 18;
+      if (lv === "branch") return 13;
+      if (lv === "leaf") return 9;
+      return data?.isCore ? 16 : 10;
+    })
+    .attr("fill", (d) => {
+      const lv = d.data.data?.level;
+      if (lv && LEVEL_STYLE[lv]) return LEVEL_STYLE[lv].fill;
+      return d.data.data?.isCore ? "#fbbf24" : "#818cf8";
+    })
+    .attr("stroke", (d) => d.data.data?.level === "core" || d.data.data?.isCore ? "#fde68a" : "#c7d2fe")
+    .attr("stroke-width", 1.5)
+    .attr("filter", (d) => d.data.data?.level === "core" || d.data.data?.isCore ? "url(#radial-glow)" : null);
+
+  // 节点文字：始终保持水平正向（不旋转），靠 x 偏移 + text-anchor 决定左/右展开
+  node.append("text")
+    .attr("dy", "0.32em")
+    .attr("x", (d) => (d.x < Math.PI ? 14 : -14))
+    .attr("text-anchor", (d) => (d.x < Math.PI ? "start" : "end"))
+    .attr("fill", (d) => d.data.data?.level === "core" ? "#fde68a" : "#fff")
+    .attr("font-size", (d) => {
+      const lv = d.data.data?.level;
+      if (lv === "core") return 14;
+      if (lv === "branch") return 12;
+      return 11;
+    })
+    .attr("font-weight", (d) => d.data.data?.level === "core" ? 700 : 500)
+    .text((d) => d.data.id);
+
+  // 中心：视频标题
+  const centerTitle = (state.result.title || "视频主题").slice(0, 14);
+  root_g.append("circle")
+    .attr("r", 38)
+    .attr("fill", "#1f2231")
+    .attr("stroke", "#fde68a")
+    .attr("stroke-width", 2)
+    .attr("filter", "url(#radial-glow)");
+  root_g.append("text")
+    .attr("text-anchor", "middle")
+    .attr("dy", "0.32em")
+    .attr("fill", "#fde68a")
+    .attr("font-size", 13)
+    .attr("font-weight", 700)
+    .text(centerTitle);
+
+  // 发光 filter
+  const defs = container.append("defs");
+  const glow = defs.append("filter").attr("id", "radial-glow")
+    .attr("x", "-50%").attr("y", "-50%").attr("width", "200%").attr("height", "200%");
+  glow.append("feGaussianBlur").attr("stdDeviation", "3").attr("result", "blur");
+  const merge = glow.append("feMerge");
+  merge.append("feMergeNode").attr("in", "blur");
+  merge.append("feMergeNode").attr("in", "SourceGraphic");
+
+  // Tooltip + 点击跳卡片（跟 force 版一致）
+  const tt = $("#graph-tooltip");
+  node
+    .on("mouseenter", (event, d) => {
+      const data = d.data.data;
+      if (!data) return;
+      tt.classList.remove("hidden");
+      tt.innerHTML = `<div class="font-bold mb-1 text-brandSoft">${escapeHtml(d.data.id)}${data.isCore ? '<span class="text-xs text-yellow-300 ml-1">· 核心</span>' : ''}</div>
+        <div class="text-white/80">${escapeHtml(data.explanation || "")}</div>
+        ${data.analogy ? `<div class="mt-2 text-white/60 italic">类比：${escapeHtml(data.analogy)}</div>` : ""}`;
+    })
+    .on("mousemove", (event) => {
+      const rect = svg.node().getBoundingClientRect();
+      tt.style.left = event.clientX - rect.left + 14 + "px";
+      tt.style.top = event.clientY - rect.top + 14 + "px";
+    })
+    .on("mouseleave", () => tt.classList.add("hidden"))
+    .on("click", (event, d) => {
+      event.stopPropagation();
+      state.selectedConcept = d.data.id;
+      switchTab("cards", { highlight: d.data.id });
+    });
+
+  // 图例（用一致的 force 关系图例）—— mindmap 模式下隐藏，因为不画关系颜色
+  $("#graph-legend").innerHTML = `
+    <div class="graph-legend-panel">
+      <div class="graph-legend-title">节点层级</div>
+      <div class="graph-legend-item"><span class="graph-legend-swatch" style="background:#fbbf24"></span><span>核心</span></div>
+      <div class="graph-legend-item"><span class="graph-legend-swatch" style="background:#818cf8"></span><span>分支</span></div>
+      <div class="graph-legend-item"><span class="graph-legend-swatch" style="background:#5b4ddc"></span><span>细节</span></div>
+    </div>`;
+
+  // 径向模式下「讲解」按钮暂时禁用（讲解逻辑跟 force 的 sim/focusNeighborhood 绑死）
+  const playBtn = $("#graph-play");
+  if (playBtn) {
+    playBtn.onclick = () => showToast("讲解模式暂只在力布局下可用");
+  }
+  const resetBtn = $("#graph-reset");
+  if (resetBtn) {
+    resetBtn.onclick = () => renderGraph();
+  }
+
+  _graphApi = {
+    pulse(name) {
+      const target = node.filter((d) => d.data.id === name);
+      if (target.empty()) return;
+      target.classed("pulsing", true);
+      setTimeout(() => target.classed("pulsing", false), 1600);
+    },
+    nodes: visibleNodes.map((d) => d.data.data).filter(Boolean),
+  };
+
+  if (highlightName) {
+    setTimeout(() => _graphApi && _graphApi.pulse(highlightName), 250);
+  }
+}
+
+/** 把图状 nodes/links 转成 mindmap 层级：root → cores → 其余按邻接 / 轮询分配 */
+function buildRadialHierarchy(nodes, links) {
+  const adj = new Map();
+  nodes.forEach((n) => adj.set(n.id, new Set()));
+  links.forEach((l) => {
+    const s = typeof l.source === "string" ? l.source : l.source.id;
+    const t = typeof l.target === "string" ? l.target : l.target.id;
+    if (adj.has(s) && adj.has(t)) {
+      adj.get(s).add(t);
+      adj.get(t).add(s);
+    }
+  });
+
+  // 找核心节点
+  let cores = nodes.filter((n) => n.level === "core" || n.isCore);
+  if (cores.length === 0) {
+    const sorted = [...nodes].sort((a, b) => (b.score || 0) - (a.score || 0));
+    cores = sorted.slice(0, Math.min(5, Math.max(2, Math.ceil(nodes.length * 0.25))));
+  }
+  cores = cores.slice(0, 6); // 最多 6 个 core 不然环上太挤
+
+  const coreIds = new Set(cores.map((c) => c.id));
+  const others = nodes.filter((n) => !coreIds.has(n.id));
+
+  const childrenByCore = new Map();
+  cores.forEach((c) => childrenByCore.set(c.id, []));
+
+  let robin = 0;
+  others.forEach((o) => {
+    const neighbors = adj.get(o.id) || new Set();
+    const linked = cores.filter((c) => neighbors.has(c.id));
+    let parent;
+    if (linked.length > 0) {
+      // 选邻居最少的 core 来"均衡"
+      linked.sort((a, b) => childrenByCore.get(a.id).length - childrenByCore.get(b.id).length);
+      parent = linked[0];
+    } else {
+      parent = cores[robin % cores.length];
+      robin++;
+    }
+    childrenByCore.get(parent.id).push(o);
+  });
+
+  return {
+    id: "__root__",
+    isRoot: true,
+    children: cores.map((c) => ({
+      id: c.id,
+      data: c,
+      children: (childrenByCore.get(c.id) || []).map((n) => ({ id: n.id, data: n })),
+    })),
+  };
 }
 
 function renderGraphLegend(links) {
@@ -1779,9 +2207,15 @@ function answerQuiz(letter, item) {
   const letters = ["A", "B", "C", "D"];
   $$("#quiz-options .quiz-option").forEach((btn, i) => {
     btn.disabled = true;
-    if (letters[i] === item.answer) btn.classList.add("correct");
-    else if (letters[i] === letter) btn.classList.add("wrong");
-    else btn.classList.add("dim");
+    if (letters[i] === item.answer) {
+      btn.classList.add("correct");
+      // 答错时给正确答案加 pulse 让眼睛知道在哪
+      if (!ok) btn.classList.add("reveal-pulse");
+    } else if (letters[i] === letter) {
+      btn.classList.add("wrong");
+    } else {
+      btn.classList.add("dim");
+    }
   });
   const fb = $("#quiz-feedback");
   fb.classList.remove("hidden");
