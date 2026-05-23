@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
  * 科普视频 AI 解构器 - 前端主逻辑
  * 工作顺序按 prompt.txt：先用 mock 跑通骨架，再逐步接 API。
  * ============================================================ */
@@ -7,12 +7,12 @@
 window.__MOCK__ = {
   title: "黑洞为什么不会发光？事件视界与时空弯曲入门",
   summary:
-    "黑洞并非“完全黑”，而是因为其引力强到连光都无法逃脱事件视界。本视频从牛顿引力出发，类比逃逸速度的概念，逐步引入爱因斯坦广义相对论中“时空弯曲”的新理解，并简述霍金辐射如何让黑洞重新“被看见”。",
+    "黑洞并非「完全黑」，而是因为其引力强到连光都无法逃脱事件视界。本视频从牛顿引力出发，类比逃逸速度的概念，逐步引入爱因斯坦广义相对论中「时空弯曲」的新理解，并简述霍金辐射如何让黑洞重新「被看见」。",
   key_concepts: [
     {
       name: "事件视界",
       explanation: "黑洞周围的一个临界球面，进入它以后任何信息都无法再返回外部宇宙。",
-      analogy: "像瀑布顶端的“不可挽回点”——一旦水流过了那条线，再怎么挣扎都只能往下掉。",
+      analogy: "像瀑布顶端的「不可挽回点」——一旦水流过了那条线，再怎么挣扎都只能往下掉。",
     },
     {
       name: "逃逸速度",
@@ -21,7 +21,7 @@ window.__MOCK__ = {
     },
     {
       name: "时空弯曲",
-      explanation: "广义相对论中,质量会使周围的时空发生几何变形,物体沿着弯曲的时空“直线”运动,表现为引力。",
+      explanation: "广义相对论中,质量会使周围的时空发生几何变形,物体沿着弯曲的时空「直线」运动,表现为引力。",
       analogy: "像放在橡胶膜上的保龄球,周围会凹下去,小球滚过时会被吸过来。",
     },
     {
@@ -32,7 +32,7 @@ window.__MOCK__ = {
     {
       name: "奇点",
       explanation: "黑洞中心理论上密度无限大、时空曲率无限大的点,目前物理定律在此失效。",
-      analogy: "像数学公式里的“除以零”——不是真的无穷大,而是模型在这里破了。",
+      analogy: "像数学公式里的「除以零」——不是真的无穷大,而是模型在这里破了。",
     },
   ],
   concept_relations: [
@@ -43,16 +43,16 @@ window.__MOCK__ = {
     { from: "时空弯曲", to: "奇点", relation: "极端表现" },
   ],
   key_points: [
-    { point: "黑洞不是“洞”,而是一个极端致密的天体", timestamp: "00:32", importance: "high" },
+    { point: "黑洞不是「洞」,而是一个极端致密的天体", timestamp: "00:32", importance: "high" },
     { point: "用逃逸速度类比解释为什么光也跑不掉", timestamp: "01:15", importance: "high" },
-    { point: "广义相对论的“等效原理”是理解时空弯曲的入口", timestamp: "02:48", importance: "medium" },
+    { point: "广义相对论的「等效原理」是理解时空弯曲的入口", timestamp: "02:48", importance: "medium" },
     { point: "黑洞并非永恒,会通过霍金辐射缓慢蒸发", timestamp: "04:20", importance: "high" },
     { point: "奇点是当前物理理论的边界,不是物理实体", timestamp: "05:05", importance: "medium" },
-    { point: "EHT 望远镜拍到的“照片”实际是吸积盘", timestamp: "06:30", importance: "low" },
+    { point: "EHT 望远镜拍到的「照片」实际是吸积盘", timestamp: "06:30", importance: "low" },
   ],
   quiz: [
     {
-      question: "黑洞之所以“黑”,最准确的解释是？",
+      question: "黑洞之所以「黑」,最准确的解释是？",
       options: [
         "它是宇宙中的一个真实空洞",
         "它的引力大到连光都无法从事件视界逃逸",
@@ -63,7 +63,7 @@ window.__MOCK__ = {
       explanation: "黑洞并非空洞,而是质量极大、密度极高的天体,其引力使光的逃逸速度超过光速本身。",
     },
     {
-      question: "下列哪一项最贴近“事件视界”的物理含义？",
+      question: "下列哪一项最贴近「事件视界」的物理含义？",
       options: [
         "黑洞的物理表面",
         "黑洞的中心点",
@@ -88,7 +88,7 @@ window.__MOCK__ = {
   follow_up_questions: [
     "如果我掉进黑洞会发生什么？",
     "黑洞和虫洞是同一回事吗？",
-    "为什么科学家说黑洞内部“时间”和“空间”会调换？",
+    "为什么科学家说黑洞内部「时间」和「空间」会调换？",
     "霍金辐射真的被观测到了吗？",
   ],
 };
@@ -102,7 +102,9 @@ const state = {
     idx: 0,
     correct: 0,
     answered: false,
+    wrong: [],
   },
+  selectedConcept: null,
 };
 
 /* ---------- DOM 引用 ---------- */
@@ -161,9 +163,91 @@ function bindBack() {
   $("#back-btn").addEventListener("click", () => {
     $("#result-section").classList.add("hidden");
     $("#input-section").classList.remove("hidden");
+    $("#hero-header")?.classList.remove("hidden");
     state.taskId = null;
     state.result = null;
   });
+  $("#export-md")?.addEventListener("click", exportMarkdown);
+}
+
+/* ============================================================
+ * 导出 Markdown 笔记
+ * ============================================================ */
+function exportMarkdown() {
+  if (!state.result) {
+    showToast("还没有可导出的内容", "error");
+    return;
+  }
+  const md = buildMarkdown(state.result);
+  const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const safeTitle = (state.result.title || "知识笔记")
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .slice(0, 60);
+  a.download = `${safeTitle}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast("已导出 " + safeTitle + ".md");
+}
+
+function buildMarkdown(d) {
+  const L = [];
+  L.push(`# ${d.title || "未命名"}`, "");
+  if (d.summary) L.push(`> ${d.summary}`, "");
+
+  if (Array.isArray(d.key_concepts) && d.key_concepts.length) {
+    L.push("## 核心概念", "");
+    d.key_concepts.forEach((c) => {
+      L.push(`### ${c.name}`, "");
+      if (c.explanation) L.push(c.explanation, "");
+      if (c.analogy) L.push(`> **类比：** ${c.analogy}`, "");
+    });
+  }
+
+  if (Array.isArray(d.key_points) && d.key_points.length) {
+    L.push("## 关键时间点", "");
+    const sorted = [...d.key_points].sort(
+      (a, b) => tsToSeconds(a.timestamp) - tsToSeconds(b.timestamp)
+    );
+    sorted.forEach((k) => {
+      const tag =
+        k.importance === "high" ? " `[重点]`" :
+        k.importance === "medium" ? " `[次重点]`" : "";
+      L.push(`- **${k.timestamp}**${tag} ${k.point}`);
+    });
+    L.push("");
+  }
+
+  if (Array.isArray(d.concept_relations) && d.concept_relations.length) {
+    L.push("## 概念关系", "");
+    d.concept_relations.forEach((r) =>
+      L.push(`- **${r.from}** → **${r.to}**：${r.relation}`)
+    );
+    L.push("");
+  }
+
+  if (Array.isArray(d.quiz) && d.quiz.length) {
+    L.push("## 自测题", "");
+    const letters = ["A", "B", "C", "D"];
+    d.quiz.forEach((q, i) => {
+      L.push(`### ${i + 1}. ${q.question}`, "");
+      (q.options || []).forEach((o, j) => L.push(`- ${letters[j]}. ${o}`));
+      L.push("", `**答案：${q.answer}** —— ${q.explanation || ""}`, "");
+    });
+  }
+
+  if (Array.isArray(d.follow_up_questions) && d.follow_up_questions.length) {
+    L.push("## 延伸思考", "");
+    d.follow_up_questions.forEach((q) => L.push(`- ${q}`));
+    L.push("");
+  }
+
+  L.push("---", "", `*由「科普解构器」自动生成 · douyinhackathon.xinguangtreehole.com*`);
+  return L.join("\n");
 }
 
 /* ============================================================
@@ -303,10 +387,13 @@ async function fetchResult(taskId) {
 /* 没有后端时,假装跑一遍进度,方便看动画 */
 function fakeAnalyze() {
   const steps = [
-    { stage: "uploading", percent: 25, message: "上传完成" },
-    { stage: "analyzing", percent: 55, message: "AI 正在理解视频内容…" },
-    { stage: "structuring", percent: 85, message: "构建知识结构…" },
-    { stage: "done", percent: 100, message: "完成！" },
+    { stage: "uploading",   percent: 12,  message: "视频拿到了，正在准备…" },
+    { stage: "uploading",   percent: 30,  message: "上传完成 · 唤醒 AI 中" },
+    { stage: "analyzing",   percent: 45,  message: "AI 正在一帧帧看视频，没漏" },
+    { stage: "analyzing",   percent: 62,  message: "听懂了主讲人在说什么" },
+    { stage: "structuring", percent: 78,  message: "把零散的概念串成知识图…" },
+    { stage: "structuring", percent: 92,  message: "顺手帮你出几道题，别紧张" },
+    { stage: "done",        percent: 100, message: "知识就绪 · 给你的私人课程" },
   ];
   let i = 0;
   const tick = () => {
@@ -316,7 +403,7 @@ function fakeAnalyze() {
     }
     const s = steps[i++];
     setStage(s.stage, s.percent, s.message);
-    setTimeout(tick, 900);
+    setTimeout(tick, 700);
   };
   tick();
 }
@@ -325,10 +412,13 @@ function fakeAnalyze() {
  * 进度遮罩
  * ============================================================ */
 function showProgressOverlay() {
-  $("#progress-overlay").classList.remove("hidden");
+  const el = $("#progress-overlay");
+  el.classList.remove("hidden", "fading");
 }
 function hideProgressOverlay() {
-  $("#progress-overlay").classList.add("hidden");
+  const el = $("#progress-overlay");
+  el.classList.add("fading");
+  setTimeout(() => el.classList.add("hidden"), 320);
 }
 function setStage(stage, percent, message) {
   const order = ["uploading", "analyzing", "structuring", "done"];
@@ -348,69 +438,127 @@ function setStage(stage, percent, message) {
  * 渲染结果
  * ============================================================ */
 function renderResult(data) {
-  state.result = data;
-  state.chatHistory = [];
-  state.quiz = { idx: 0, correct: 0, answered: false };
+  try {
+    if (!data || typeof data !== "object") {
+      throw new Error("结果数据为空");
+    }
+    state.result = data;
+    state.chatHistory = [];
+    state.quiz = { idx: 0, correct: 0, answered: false, wrong: [] };
+    state.selectedConcept = null;
 
-  // 切到结果区
-  setTimeout(() => {
+    // 切到结果区（淡出 overlay）
+    setTimeout(() => {
+      hideProgressOverlay();
+      $("#hero-header")?.classList.add("hidden");
+      $("#input-section").classList.add("hidden");
+      $("#result-section").classList.remove("hidden");
+      switchTab("cards");
+    }, 300);
+
+    // Tab 1: 知识卡片
+    $("#result-title").textContent = data.title || "（未命名视频）";
+    $("#result-summary").textContent = data.summary || "（暂无概览）";
+
+    const concepts = Array.isArray(data.key_concepts) ? data.key_concepts : [];
+    if (concepts.length) {
+      $("#concept-grid").innerHTML = concepts
+        .map(
+          (c) => `
+          <div class="concept-card" data-concept="${escapeHtml(c.name)}" role="button" tabindex="0" aria-label="在图谱中查看「${escapeHtml(c.name)}」">
+            <div class="concept-name">${escapeHtml(c.name)}</div>
+            <div class="concept-explanation">${escapeHtml(c.explanation)}</div>
+            ${c.analogy ? `<div class="concept-analogy">${escapeHtml(c.analogy)}</div>` : ""}
+            <div class="concept-hint">点击在图谱中定位 →</div>
+          </div>`
+        )
+        .join("");
+      $("#concept-grid")
+        .querySelectorAll(".concept-card")
+        .forEach((el) => {
+          el.addEventListener("click", () =>
+            switchTab("graph", { highlight: el.dataset.concept })
+          );
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              el.click();
+            }
+          });
+        });
+    } else {
+      $("#concept-grid").innerHTML = emptyState("该视频暂无核心概念");
+    }
+
+    const kps = Array.isArray(data.key_points) ? data.key_points : [];
+    if (kps.length) {
+      const sortedKp = [...kps].sort(
+        (a, b) => tsToSeconds(a.timestamp) - tsToSeconds(b.timestamp)
+      );
+      $("#key-points-list").innerHTML = sortedKp
+        .map(
+          (k) => `
+          <div class="kp-item">
+            <div class="kp-dot ${k.importance || ""}"></div>
+            <div>
+              <div class="kp-ts">${escapeHtml(k.timestamp || "")}</div>
+              <div class="kp-text">${escapeHtml(k.point)}</div>
+            </div>
+          </div>`
+        )
+        .join("");
+    } else {
+      $("#key-points-list").innerHTML = emptyState("暂无关键时间点", "compact");
+    }
+
+    // Tab 3 聊天建议
+    const followUps = Array.isArray(data.follow_up_questions) ? data.follow_up_questions : [];
+    if (followUps.length) {
+      $("#chat-suggestions").innerHTML = followUps
+        .map((q) => `<button class="suggestion-chip">${escapeHtml(q)}</button>`)
+        .join("");
+      $("#chat-suggestions")
+        .querySelectorAll(".suggestion-chip")
+        .forEach((b) =>
+          b.addEventListener("click", () => {
+            $("#chat-input").value = b.textContent;
+            sendChat();
+          })
+        );
+    } else {
+      $("#chat-suggestions").innerHTML = `<div class="text-xs text-white/30">直接在下方输入你想问的问题</div>`;
+    }
+    $("#chat-messages").innerHTML = `
+      <div class="chat-bubble assistant">
+        你好，我已经看完这段视频了。可以问我任何相关的问题，或者点上方的推荐问题。
+      </div>`;
+
+    // Tab 4 测验
+    renderQuiz();
+  } catch (err) {
+    console.error("renderResult failed:", err);
     hideProgressOverlay();
-    $("#input-section").classList.add("hidden");
-    $("#result-section").classList.remove("hidden");
-    switchTab("cards");
-  }, 300);
+    $("#input-section").classList.remove("hidden");
+    $("#result-section").classList.add("hidden");
+    showToast(`渲染失败：${err.message || err}`, "error");
+  }
+}
 
-  // Tab 1: 知识卡片
-  $("#result-title").textContent = data.title || "";
-  $("#result-summary").textContent = data.summary || "";
+function emptyState(text, variant = "default") {
+  const pad = variant === "compact" ? "py-4" : "py-10";
+  return `<div class="empty-state ${pad}">${escapeHtml(text)}</div>`;
+}
 
-  $("#concept-grid").innerHTML = (data.key_concepts || [])
-    .map(
-      (c) => `
-      <div class="concept-card">
-        <div class="concept-name">${escapeHtml(c.name)}</div>
-        <div class="concept-explanation">${escapeHtml(c.explanation)}</div>
-        ${c.analogy ? `<div class="concept-analogy">${escapeHtml(c.analogy)}</div>` : ""}
-      </div>`
-    )
-    .join("");
-
-  const sortedKp = [...(data.key_points || [])].sort((a, b) =>
-    tsToSeconds(a.timestamp) - tsToSeconds(b.timestamp)
-  );
-  $("#key-points-list").innerHTML = sortedKp
-    .map(
-      (k) => `
-      <div class="kp-item">
-        <div class="kp-dot ${k.importance}"></div>
-        <div>
-          <div class="kp-ts">${escapeHtml(k.timestamp || "")}</div>
-          <div class="kp-text">${escapeHtml(k.point)}</div>
-        </div>
-      </div>`
-    )
-    .join("");
-
-  // Tab 2 图谱在切换时再渲染（要拿到容器宽度）
-  // Tab 3 聊天建议
-  $("#chat-suggestions").innerHTML = (data.follow_up_questions || [])
-    .map((q) => `<button class="suggestion-chip">${escapeHtml(q)}</button>`)
-    .join("");
-  $("#chat-suggestions")
-    .querySelectorAll(".suggestion-chip")
-    .forEach((b) =>
-      b.addEventListener("click", () => {
-        $("#chat-input").value = b.textContent;
-        sendChat();
-      })
-    );
-  $("#chat-messages").innerHTML = `
-    <div class="chat-bubble assistant">
-      你好，我已经看完这段视频了。可以问我任何相关的问题，或者点上方的推荐问题。
-    </div>`;
-
-  // Tab 4 测验
-  renderQuiz();
+function showToast(msg, kind = "info") {
+  const el = document.createElement("div");
+  el.className = `toast toast-${kind}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.classList.add("show"), 10);
+  setTimeout(() => {
+    el.classList.remove("show");
+    setTimeout(() => el.remove(), 300);
+  }, 4000);
 }
 
 /* ============================================================
@@ -421,125 +569,268 @@ function bindTabs() {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
 }
-function switchTab(name) {
+function switchTab(name, opts = {}) {
   $$(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
   ["cards", "graph", "chat", "quiz"].forEach((t) => {
-    $(`#tab-${t}`).classList.toggle("hidden", t !== name);
+    const panel = $(`#tab-${t}`);
+    const isActive = t === name;
+    panel.classList.toggle("hidden", !isActive);
+    if (isActive) {
+      panel.classList.remove("fade-in");
+      void panel.offsetWidth;
+      panel.classList.add("fade-in");
+    }
   });
-  if (name === "graph") renderGraph();
+  if (name === "graph") {
+    renderGraph(opts.highlight);
+  } else if (name === "cards" && opts.highlight) {
+    requestAnimationFrame(() => highlightConceptCard(opts.highlight));
+  }
+  if (name === "quiz") attachQuizKeyboard();
+  else detachQuizKeyboard();
 }
 
 /* ============================================================
  * D3 概念图谱
  * ============================================================ */
-let graphRendered = false;
-function renderGraph() {
+let _graphApi = null;
+let _graphTimers = [];
+let _tourState = null;
+
+const RELATION_TYPES = {
+  contain:  { match: /包含|包括|属于|内含/,             color: "#6366f1", label: "包含" },
+  cause:    { match: /导致|引起|造成|来源|产生|引发/,   color: "#ef4444", label: "导致" },
+  contrast: { match: /对比|区别|不同|相反|差异/,        color: "#f59e0b", label: "对比" },
+  progress: { match: /递进|发展|演化|延伸|进一步|衍生/, color: "#22c55e", label: "递进" },
+  analogy:  { match: /类比|相似|类似|像/,               color: "#a855f7", label: "类比" },
+  depend:   { match: /依赖|基于|建立在|前提|定义|描述/, color: "#0ea5e9", label: "依赖" },
+};
+
+function classifyRelation(text) {
+  if (!text) return "default";
+  for (const [k, v] of Object.entries(RELATION_TYPES)) {
+    if (v.match.test(text)) return k;
+  }
+  return "default";
+}
+function relationColor(type) {
+  return RELATION_TYPES[type]?.color || "#6b7180";
+}
+function clearGraphTimers() {
+  _graphTimers.forEach((id) => clearInterval(id));
+  _graphTimers = [];
+  if (_tourState) _tourState.stopped = true;
+  _tourState = null;
+}
+
+function renderGraph(highlightName) {
   if (!state.result) return;
+  clearGraphTimers();
+
+  // 重置 UI 控件
+  const playBtn = $("#graph-play");
+  if (playBtn) {
+    playBtn.querySelector(".graph-ctrl-icon").textContent = "▶";
+    playBtn.querySelector(".graph-ctrl-label").textContent = "讲解";
+    playBtn.classList.remove("is-playing");
+  }
+  $("#graph-tour-bar")?.classList.add("hidden");
+  const legendEl = $("#graph-legend");
+  if (legendEl) legendEl.innerHTML = "";
+
   const svg = d3.select("#graph-svg");
   svg.selectAll("*").remove();
-  graphRendered = true;
 
   const concepts = state.result.key_concepts || [];
   const rels = state.result.concept_relations || [];
-  if (!concepts.length) return;
+  if (!concepts.length) {
+    svg.append("text")
+      .attr("x", "50%").attr("y", "50%")
+      .attr("text-anchor", "middle")
+      .attr("fill", "rgba(255,255,255,0.4)")
+      .text("该视频没有提取出概念关系");
+    _graphApi = null;
+    return;
+  }
 
   const width = svg.node().clientWidth;
   const height = +svg.attr("height") || 600;
   svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-  const nodes = concepts.map((c) => ({ id: c.name, explanation: c.explanation, analogy: c.analogy }));
+  // ---- 节点 & 链接数据 ----
+  const nodes = concepts.map((c) => ({
+    id: c.name,
+    explanation: c.explanation,
+    analogy: c.analogy,
+  }));
   const links = rels
-    .map((r) => ({ source: r.from, target: r.to, relation: r.relation }))
+    .map((r) => ({
+      source: r.from,
+      target: r.to,
+      relation: r.relation,
+      type: classifyRelation(r.relation),
+    }))
     .filter((l) => nodes.find((n) => n.id === l.source) && nodes.find((n) => n.id === l.target));
 
+  // ---- 节点重要性分级：degree + key_points 提及 ----
+  const keyPoints = state.result.key_points || [];
+  const mentions = {};
+  const degrees = {};
+  nodes.forEach((n) => { mentions[n.id] = 0; degrees[n.id] = 0; });
+  keyPoints.forEach((kp) => {
+    nodes.forEach((n) => {
+      if (kp.point && kp.point.includes(n.id)) mentions[n.id]++;
+    });
+  });
+  links.forEach((l) => {
+    degrees[l.source] = (degrees[l.source] || 0) + 1;
+    degrees[l.target] = (degrees[l.target] || 0) + 1;
+  });
+  const rawScore = (id) => degrees[id] * 1.5 + mentions[id] * 1.2;
+  const maxScore = Math.max(...nodes.map((n) => rawScore(n.id)), 1);
+  nodes.forEach((n) => {
+    n.score = rawScore(n.id) / maxScore;
+    n.radius = 22 + n.score * 22;     // 22..44
+    n.isCore = n.score >= 0.7;
+  });
+
+  // ---- 邻接表 ----
+  const neighbors = new Map(nodes.map((n) => [n.id, new Set([n.id])]));
+  links.forEach((l) => {
+    neighbors.get(l.source).add(l.target);
+    neighbors.get(l.target).add(l.source);
+  });
+
+  // ---- 力布局：核心节点斥力更强、collide 用半径 ----
   const sim = d3
     .forceSimulation(nodes)
-    .force("link", d3.forceLink(links).id((d) => d.id).distance(120))
-    .force("charge", d3.forceManyBody().strength(-300))
+    .force("link", d3.forceLink(links).id((d) => d.id).distance(130))
+    .force("charge", d3.forceManyBody().strength((d) => -350 - d.score * 250))
     .force("center", d3.forceCenter(width / 2, height / 2))
-    .force("collide", d3.forceCollide(45));
+    .force("collide", d3.forceCollide().radius((d) => d.radius + 8));
 
-  // 箭头
-  svg
-    .append("defs")
-    .append("marker")
-    .attr("id", "arrow")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 28)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#6366f1")
-    .attr("opacity", 0.7);
+  // ---- 缩放/平移 ----
+  const container = svg.append("g").attr("class", "graph-zoom");
+  svg.call(
+    d3.zoom()
+      .scaleExtent([0.4, 3])
+      .filter((event) => !event.target.closest(".node"))
+      .on("zoom", (event) => container.attr("transform", event.transform))
+  );
 
-  const link = svg
-    .append("g")
-    .attr("class", "links")
-    .selectAll("line")
-    .data(links)
-    .join("line")
-    .attr("class", "link")
-    .attr("stroke-width", 1.5)
-    .attr("marker-end", "url(#arrow)");
+  // ---- defs: 每种关系一个箭头 marker + 核心节点发光 filter ----
+  const defs = container.append("defs");
+  ["default", ...Object.keys(RELATION_TYPES)].forEach((t) => {
+    defs.append("marker")
+      .attr("id", `arrow-${t}`)
+      .attr("viewBox", "0 -5 10 10")
+      .attr("refX", 30).attr("refY", 0)
+      .attr("markerWidth", 6).attr("markerHeight", 6)
+      .attr("orient", "auto")
+      .append("path")
+      .attr("d", "M0,-5L10,0L0,5")
+      .attr("fill", relationColor(t))
+      .attr("opacity", 0.85);
+  });
+  const glow = defs.append("filter")
+    .attr("id", "node-glow").attr("x", "-50%").attr("y", "-50%")
+    .attr("width", "200%").attr("height", "200%");
+  glow.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "blur");
+  const merge = glow.append("feMerge");
+  merge.append("feMergeNode").attr("in", "blur");
+  merge.append("feMergeNode").attr("in", "SourceGraphic");
 
-  const linkLabel = svg
-    .append("g")
-    .selectAll("text")
-    .data(links)
-    .join("text")
+  // ---- 连线 ----
+  const link = container
+    .append("g").attr("class", "links")
+    .selectAll("line").data(links).join("line")
+    .attr("class", (d) => `link link-${d.type}`)
+    .attr("stroke", (d) => relationColor(d.type))
+    .attr("stroke-width", 1.6)
+    .attr("stroke-opacity", 0.7)
+    .attr("marker-end", (d) => `url(#arrow-${d.type})`);
+
+  const linkLabel = container
+    .append("g").attr("class", "link-labels")
+    .selectAll("text").data(links).join("text")
     .attr("class", "link-label")
     .attr("text-anchor", "middle")
+    .attr("fill", (d) => relationColor(d.type))
     .text((d) => d.relation || "");
 
-  const node = svg
-    .append("g")
-    .attr("class", "nodes")
-    .selectAll("g")
-    .data(nodes)
-    .join("g")
-    .attr("class", "node")
-    .call(
-      d3
-        .drag()
-        .on("start", (event, d) => {
-          if (!event.active) sim.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        })
-        .on("drag", (event, d) => {
-          d.fx = event.x;
-          d.fy = event.y;
-        })
-        .on("end", (event, d) => {
-          if (!event.active) sim.alphaTarget(0);
-          d.fx = null;
-          d.fy = null;
-        })
-    );
+  // ---- 粒子层：每条 link 一个粒子，周期性从 source→target 流动 ----
+  const particle = container
+    .append("g").attr("class", "particles")
+    .selectAll("circle").data(links).join("circle")
+    .attr("class", "particle")
+    .attr("r", 2.6)
+    .attr("fill", (d) => relationColor(d.type))
+    .attr("opacity", 0);
+
+  // ---- 节点 ----
+  const node = container
+    .append("g").attr("class", "nodes")
+    .selectAll("g").data(nodes).join("g")
+    .attr("class", (d) => "node" + (d.isCore ? " is-core" : ""))
+    .attr("data-concept", (d) => d.id)
+    .call(d3.drag()
+      .on("start", (event, d) => {
+        if (!event.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      })
+      .on("drag", (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end", (event, d) => {
+        if (!event.active) sim.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      }));
+
+  // 核心节点的外圈柔光
+  node.filter((d) => d.isCore)
+    .append("circle")
+    .attr("class", "node-halo")
+    .attr("r", (d) => d.radius + 10)
+    .attr("fill", "#818cf8")
+    .attr("fill-opacity", 0.12);
 
   node
     .append("circle")
-    .attr("r", 26)
-    .attr("fill", "#6366f1")
-    .attr("fill-opacity", 0.85)
-    .attr("stroke", "#a5b4fc")
-    .attr("stroke-width", 2);
+    .attr("class", "node-bg")
+    .attr("r", (d) => d.radius)
+    .attr("fill", (d) => d3.interpolateRgb("#3730a3", "#a5b4fc")(d.score))
+    .attr("fill-opacity", 0.95)
+    .attr("stroke", (d) => d.isCore ? "#fde68a" : "#c7d2fe")
+    .attr("stroke-width", (d) => d.isCore ? 2.5 : 1.5)
+    .attr("filter", (d) => d.isCore ? "url(#node-glow)" : null);
 
   node
     .append("text")
     .attr("text-anchor", "middle")
     .attr("dy", 4)
+    .attr("font-size", (d) => Math.round(Math.max(11, Math.min(15, 10 + d.score * 6))))
+    .attr("font-weight", (d) => d.isCore ? 700 : 500)
     .text((d) => d.id);
 
-  // Tooltip
+  // ---- 邻域聚焦 ----
+  function focusNeighborhood(id) {
+    const ns = neighbors.get(id) || new Set([id]);
+    node.classed("dim", (d) => !ns.has(d.id));
+    node.classed("focus", (d) => d.id === id);
+    link.classed("dim", (d) => !(d.source.id === id || d.target.id === id));
+    link.classed("focus", (d) => d.source.id === id || d.target.id === id);
+    linkLabel.classed("dim", (d) => !(d.source.id === id || d.target.id === id));
+  }
+  function clearFocus() {
+    node.classed("dim", false).classed("focus", false);
+    link.classed("dim", false).classed("focus", false);
+    linkLabel.classed("dim", false);
+  }
+
   const tt = $("#graph-tooltip");
   node
     .on("mouseenter", (event, d) => {
+      focusNeighborhood(d.id);
       tt.classList.remove("hidden");
-      tt.innerHTML = `<div class="font-bold mb-1 text-brandSoft">${escapeHtml(d.id)}</div>
+      tt.innerHTML = `<div class="font-bold mb-1 text-brandSoft">${escapeHtml(d.id)}${d.isCore ? '<span class="text-xs text-yellow-300 ml-1">· 核心</span>' : ''}</div>
         <div class="text-white/80">${escapeHtml(d.explanation || "")}</div>
         ${d.analogy ? `<div class="mt-2 text-white/60 italic">类比：${escapeHtml(d.analogy)}</div>` : ""}`;
     })
@@ -548,19 +839,212 @@ function renderGraph() {
       tt.style.left = event.clientX - rect.left + 14 + "px";
       tt.style.top = event.clientY - rect.top + 14 + "px";
     })
-    .on("mouseleave", () => tt.classList.add("hidden"));
+    .on("mouseleave", () => {
+      if (!state.selectedConcept) clearFocus();
+      else focusNeighborhood(state.selectedConcept);
+      tt.classList.add("hidden");
+    })
+    .on("click", (event, d) => {
+      event.stopPropagation();
+      state.selectedConcept = d.id;
+      focusNeighborhood(d.id);
+      switchTab("cards", { highlight: d.id });
+    });
+
+  svg.on("click", () => {
+    state.selectedConcept = null;
+    clearFocus();
+  });
 
   sim.on("tick", () => {
     link
-      .attr("x1", (d) => d.source.x)
-      .attr("y1", (d) => d.source.y)
-      .attr("x2", (d) => d.target.x)
-      .attr("y2", (d) => d.target.y);
+      .attr("x1", (d) => d.source.x).attr("y1", (d) => d.source.y)
+      .attr("x2", (d) => d.target.x).attr("y2", (d) => d.target.y);
     linkLabel
       .attr("x", (d) => (d.source.x + d.target.x) / 2)
       .attr("y", (d) => (d.source.y + d.target.y) / 2 - 4);
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
   });
+
+  // ---- 粒子动画：每 2.2s 启动一次 source→target 流动 ----
+  function emitParticles() {
+    particle
+      .attr("cx", (d) => d.source.x)
+      .attr("cy", (d) => d.source.y)
+      .attr("opacity", 0.9)
+      .transition().duration(1700).ease(d3.easeCubicInOut)
+      .attr("cx", (d) => d.target.x)
+      .attr("cy", (d) => d.target.y)
+      .attr("opacity", 0);
+  }
+  setTimeout(emitParticles, 700);
+  _graphTimers.push(setInterval(emitParticles, 2200));
+
+  // ---- 图例 + 控制按钮 ----
+  renderGraphLegend(links);
+  bindGraphControls({ nodes, sim, focusNeighborhood, clearFocus });
+
+  _graphApi = {
+    pulse(name) {
+      const target = node.filter((d) => d.id === name);
+      if (target.empty()) return;
+      target.classed("pulsing", true);
+      setTimeout(() => target.classed("pulsing", false), 1600);
+      state.selectedConcept = name;
+      focusNeighborhood(name);
+    },
+    focusNeighborhood,
+    clearFocus,
+    nodes,
+    sim,
+  };
+
+  if (highlightName) {
+    setTimeout(() => _graphApi && _graphApi.pulse(highlightName), 250);
+  }
+}
+
+function renderGraphLegend(links) {
+  const el = $("#graph-legend");
+  if (!el) return;
+  const used = Array.from(new Set(links.map((l) => l.type).filter((t) => t !== "default")));
+  if (!used.length) { el.innerHTML = ""; return; }
+  el.innerHTML = `
+    <div class="graph-legend-panel">
+      <div class="graph-legend-title">关系类型</div>
+      ${used.map((t) => `
+        <div class="graph-legend-item">
+          <span class="graph-legend-swatch" style="background:${relationColor(t)}"></span>
+          <span>${RELATION_TYPES[t].label}</span>
+        </div>
+      `).join("")}
+    </div>`;
+}
+
+function bindGraphControls(ctx) {
+  const playBtn = $("#graph-play");
+  const resetBtn = $("#graph-reset");
+  if (playBtn) {
+    playBtn.onclick = () => {
+      if (_tourState && !_tourState.stopped) stopTour(ctx);
+      else startTour(ctx);
+    };
+  }
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      state.selectedConcept = null;
+      ctx.clearFocus();
+      ctx.sim.alpha(0.7).restart();
+    };
+  }
+}
+
+function startTour(ctx) {
+  if (_tourState && !_tourState.stopped) return;
+  const order = [...ctx.nodes].sort((a, b) => b.score - a.score);
+  const playBtn = $("#graph-play");
+  const tourBar = $("#graph-tour-bar");
+  if (playBtn) {
+    playBtn.querySelector(".graph-ctrl-icon").textContent = "⏸";
+    playBtn.querySelector(".graph-ctrl-label").textContent = "暂停";
+    playBtn.classList.add("is-playing");
+  }
+  tourBar?.classList.remove("hidden");
+
+  _tourState = { stopped: false, idx: 0 };
+  const step = () => {
+    if (!_tourState || _tourState.stopped) return;
+    if (_tourState.idx >= order.length) {
+      if (tourBar) tourBar.innerHTML = `<div class="text-center text-white/60">讲解完毕 · 已带你走完 ${order.length} 个核心概念</div>`;
+      setTimeout(() => stopTour(ctx), 1800);
+      return;
+    }
+    const n = order[_tourState.idx++];
+    state.selectedConcept = n.id;
+    ctx.focusNeighborhood(n.id);
+    if (_graphApi) _graphApi.pulse(n.id);
+    if (tourBar) {
+      tourBar.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="text-xs text-white/40 shrink-0 font-mono">${_tourState.idx}/${order.length}</div>
+          <div class="shrink-0 px-2 py-0.5 rounded-full text-xs font-medium" style="background:rgba(99,102,241,0.22); color:#c7d2fe;">${escapeHtml(n.id)}${n.isCore ? ' · 核心' : ''}</div>
+          <div class="text-white/85 truncate flex-1">${escapeHtml(n.explanation || "")}</div>
+        </div>`;
+    }
+  };
+  step();
+  const tid = setInterval(step, 3400);
+  _tourState.timer = tid;
+  _graphTimers.push(tid);
+}
+
+function stopTour(ctx) {
+  if (!_tourState) return;
+  _tourState.stopped = true;
+  if (_tourState.timer) clearInterval(_tourState.timer);
+  _tourState = null;
+  const playBtn = $("#graph-play");
+  if (playBtn) {
+    playBtn.querySelector(".graph-ctrl-icon").textContent = "▶";
+    playBtn.querySelector(".graph-ctrl-label").textContent = "讲解";
+    playBtn.classList.remove("is-playing");
+  }
+  $("#graph-tour-bar")?.classList.add("hidden");
+  if (ctx) ctx.clearFocus();
+  state.selectedConcept = null;
+}
+
+/* ============================================================
+ * 跨 Tab 联动 - 概念卡片高亮
+ * ============================================================ */
+function highlightConceptCard(name) {
+  const card = $(`#concept-grid .concept-card[data-concept="${cssEscape(name)}"]`);
+  if (!card) return;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  card.classList.remove("is-highlight");
+  void card.offsetWidth;
+  card.classList.add("is-highlight");
+  setTimeout(() => card.classList.remove("is-highlight"), 1800);
+}
+
+function cssEscape(s) {
+  if (window.CSS && CSS.escape) return CSS.escape(s);
+  return String(s).replace(/[^a-zA-Z0-9_-]/g, (c) => `\\${c}`);
+}
+
+/* ============================================================
+ * 测验键盘快捷键（仅在 Tab4 active 时绑定）
+ * ============================================================ */
+let _quizKeyHandler = null;
+function attachQuizKeyboard() {
+  if (_quizKeyHandler) return;
+  _quizKeyHandler = (e) => {
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+    const q = state.result?.quiz || [];
+    const onResult = state.quiz.idx >= q.length;
+    if (!onResult && !state.quiz.answered && /^[1-4]$/.test(e.key)) {
+      const idx = +e.key - 1;
+      const btn = $$("#quiz-options .quiz-option")[idx];
+      if (btn && !btn.disabled) btn.click();
+      e.preventDefault();
+    } else if (!onResult && state.quiz.answered && (e.key === "Enter" || e.key === " ")) {
+      const next = $("#quiz-next");
+      if (next && !next.classList.contains("hidden")) {
+        next.click();
+        e.preventDefault();
+      }
+    } else if (onResult && (e.key === "r" || e.key === "R")) {
+      const r = $("#quiz-restart");
+      if (r) r.click();
+    }
+  };
+  document.addEventListener("keydown", _quizKeyHandler);
+}
+function detachQuizKeyboard() {
+  if (_quizKeyHandler) {
+    document.removeEventListener("keydown", _quizKeyHandler);
+    _quizKeyHandler = null;
+  }
 }
 
 /* ============================================================
@@ -624,33 +1108,29 @@ function renderQuiz() {
   const q = state.result?.quiz || [];
   const card = $("#quiz-card");
   if (!q.length) {
-    card.innerHTML = `<div class="text-white/40 text-center">该视频暂无测验题</div>`;
+    card.innerHTML = `<div class="text-white/40 text-center py-12">该视频暂无测验题</div>`;
     return;
   }
   if (state.quiz.idx >= q.length) {
-    const score = state.quiz.correct;
-    const total = q.length;
-    card.innerHTML = `
-      <div class="text-center">
-        <div class="text-5xl font-bold text-brand mb-3">${score} / ${total}</div>
-        <div class="text-white/60 mb-6">${
-          score === total ? "满分通过！" : score >= total / 2 ? "不错，继续加油" : "可以再看一遍视频哦"
-        }</div>
-        <button id="quiz-restart" class="bg-brand hover:bg-brandDeep px-6 py-3 rounded-xl2 font-medium transition">
-          再来一遍
-        </button>
-      </div>`;
-    $("#quiz-restart").addEventListener("click", () => {
-      state.quiz = { idx: 0, correct: 0, answered: false };
-      renderQuiz();
-    });
-    if (score === total) celebrate();
+    renderQuizResult(q);
     return;
   }
 
   const item = q[state.quiz.idx];
+  const progressPct = Math.round((state.quiz.idx / q.length) * 100);
   card.innerHTML = `
-    <div class="text-sm text-white/40 mb-2">第 ${state.quiz.idx + 1} / ${q.length} 题</div>
+    <div class="quiz-progress mb-4" aria-label="进度">
+      <div class="quiz-progress-bar" style="width: ${progressPct}%"></div>
+    </div>
+    <div class="flex items-center justify-between mb-3">
+      <div class="text-sm text-white/40">第 ${state.quiz.idx + 1} / ${q.length} 题</div>
+      <div class="kbd-hint">
+        <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span><span class="kbd">4</span>
+        <span class="text-white/30 ml-1">选答案 ·</span>
+        <span class="kbd">Enter</span>
+        <span class="text-white/30">下一题</span>
+      </div>
+    </div>
     <div class="text-lg font-medium mb-6 leading-relaxed">${escapeHtml(item.question)}</div>
     <div id="quiz-options"></div>
     <div id="quiz-feedback" class="hidden mt-5 p-4 rounded-lg text-sm leading-relaxed"></div>
@@ -665,7 +1145,7 @@ function renderQuiz() {
   (item.options || []).forEach((opt, i) => {
     const b = document.createElement("button");
     b.className = "quiz-option";
-    b.innerHTML = `<span class="text-brandSoft font-bold mr-3">${letters[i]}</span>${escapeHtml(opt)}`;
+    b.innerHTML = `<span class="quiz-option-letter">${letters[i]}</span><span class="quiz-option-text">${escapeHtml(opt)}</span>`;
     b.addEventListener("click", () => answerQuiz(letters[i], item));
     opts.appendChild(b);
   });
@@ -676,11 +1156,88 @@ function renderQuiz() {
   });
 }
 
+function renderQuizResult(q) {
+  const card = $("#quiz-card");
+  const score = state.quiz.correct;
+  const total = q.length;
+  const hasWrong = state.quiz.wrong.length > 0;
+  const tone =
+    score === total ? "全部答对！" :
+    score >= total * 0.7 ? "不错，继续保持" :
+    score >= total / 2 ? "及格了，回看一遍会更稳" : "可以再看一遍视频哦";
+
+  card.innerHTML = `
+    <div class="text-center">
+      <div class="quiz-score ${score === total ? "is-perfect" : ""} mb-2">${score} / ${total}</div>
+      <div class="text-white/60 mb-7">${tone}</div>
+      <div class="flex gap-3 justify-center flex-wrap">
+        ${hasWrong ? `<button id="quiz-review" class="bg-inkLine hover:bg-inkLine/70 px-5 py-3 rounded-xl2 transition">
+          查看错题 <span class="ml-1 px-2 py-0.5 rounded-full text-xs bg-red-500/30 text-red-200">${state.quiz.wrong.length}</span>
+        </button>` : ""}
+        <button id="quiz-restart" class="bg-brand hover:bg-brandDeep px-6 py-3 rounded-xl2 font-medium transition">
+          再来一遍 <span class="kbd kbd-inline ml-1">R</span>
+        </button>
+      </div>
+    </div>`;
+  $("#quiz-restart").addEventListener("click", () => {
+    state.quiz = { idx: 0, correct: 0, answered: false, wrong: [] };
+    renderQuiz();
+  });
+  if (hasWrong) {
+    $("#quiz-review").addEventListener("click", showQuizReview);
+  }
+  if (score === total) celebrate();
+}
+
+function showQuizReview() {
+  const card = $("#quiz-card");
+  const wrong = state.quiz.wrong;
+  const letters = ["A", "B", "C", "D"];
+  card.innerHTML = `
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-sm text-white/40">错题回顾 · ${wrong.length} 题</div>
+      <button id="quiz-back-result" class="text-xs text-white/50 hover:text-white">← 返回得分</button>
+    </div>
+    <div class="space-y-5">
+      ${wrong.map((w, i) => {
+        const yourIdx = letters.indexOf(w.your);
+        const ansIdx = letters.indexOf(w.item.answer);
+        return `
+        <div class="quiz-review-item">
+          <div class="font-medium mb-3 leading-relaxed">${i + 1}. ${escapeHtml(w.item.question)}</div>
+          <div class="space-y-1.5 mb-3">
+            ${(w.item.options || []).map((opt, j) => {
+              const isAns = j === ansIdx;
+              const isYour = j === yourIdx;
+              const cls = isAns ? "text-green-400" : isYour ? "text-red-400 line-through" : "text-white/40";
+              const mark = isAns ? "✓" : isYour ? "✗" : " ";
+              return `<div class="text-sm ${cls}"><span class="font-mono mr-2">${letters[j]} ${mark}</span>${escapeHtml(opt)}</div>`;
+            }).join("")}
+          </div>
+          <div class="text-sm text-white/75 leading-relaxed concept-analogy" style="border-left-color:#22c55e">
+            <span class="text-green-300 font-medium">解析：</span>${escapeHtml(w.item.explanation || "")}
+          </div>
+        </div>`;
+      }).join("")}
+    </div>
+    <div class="mt-6 text-center">
+      <button id="quiz-restart" class="bg-brand hover:bg-brandDeep px-6 py-3 rounded-xl2 font-medium transition">
+        再来一遍
+      </button>
+    </div>`;
+  $("#quiz-back-result").addEventListener("click", () => renderQuiz());
+  $("#quiz-restart").addEventListener("click", () => {
+    state.quiz = { idx: 0, correct: 0, answered: false, wrong: [] };
+    renderQuiz();
+  });
+}
+
 function answerQuiz(letter, item) {
   if (state.quiz.answered) return;
   state.quiz.answered = true;
   const ok = letter === item.answer;
   if (ok) state.quiz.correct++;
+  else state.quiz.wrong.push({ idx: state.quiz.idx, item, your: letter });
   const letters = ["A", "B", "C", "D"];
   $$("#quiz-options .quiz-option").forEach((btn, i) => {
     btn.disabled = true;
@@ -690,8 +1247,7 @@ function answerQuiz(letter, item) {
   });
   const fb = $("#quiz-feedback");
   fb.classList.remove("hidden");
-  fb.style.background = ok ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)";
-  fb.style.borderLeft = `3px solid ${ok ? "#22c55e" : "#ef4444"}`;
+  fb.classList.add(ok ? "ok" : "ng");
   fb.innerHTML = `<div class="font-medium mb-1">${ok ? "回答正确 ✓" : "答错啦"}</div>
     <div class="text-white/80">${escapeHtml(item.explanation || "")}</div>`;
   $("#quiz-next").classList.remove("hidden");

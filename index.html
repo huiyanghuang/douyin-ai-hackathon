@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>科普解构器 · 让视频变成你的私人课程</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta name="description" content="抖音黑客松 · 把科普视频自动解构为概念图谱、知识卡片、AI 追问与游戏化测验。" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -29,11 +31,11 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260523a" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
   <!-- ============== HERO ============== -->
-  <header class="max-w-6xl mx-auto px-6 pt-16 pb-10 text-center">
+  <header id="hero-header" class="max-w-6xl mx-auto px-6 pt-16 pb-10 text-center">
     <h1 class="text-5xl md:text-6xl font-bold tracking-tight">
       科普解构器
       <span class="block text-brandSoft text-2xl md:text-3xl font-medium mt-3">
@@ -122,7 +124,7 @@
           <div class="label">完成</div>
         </div>
       </div>
-      <div id="progress-message" class="text-xl font-medium mb-6">准备中…</div>
+      <div id="progress-message" class="text-xl font-medium mb-6">正在唤醒 AI…</div>
       <div class="h-2 bg-inkLine rounded-full overflow-hidden mb-3">
         <div id="progress-bar" class="h-full bg-brand transition-all duration-500" style="width: 0%"></div>
       </div>
@@ -131,16 +133,28 @@
   </div>
 
   <!-- ============== 区域三：结果展示 ============== -->
-  <section id="result-section" class="hidden max-w-6xl mx-auto px-6 pb-24">
-    <!-- Tab Bar -->
-    <div class="border-b border-inkLine mb-8 flex gap-1 overflow-x-auto">
-      <button class="tab-btn active" data-tab="cards">知识卡片</button>
-      <button class="tab-btn" data-tab="graph">概念图谱</button>
-      <button class="tab-btn" data-tab="chat">AI 追问</button>
-      <button class="tab-btn" data-tab="quiz">知识测验</button>
-      <div class="flex-1"></div>
-      <button id="back-btn" class="text-white/40 hover:text-white text-sm px-4 self-center">← 返回首页</button>
-    </div>
+  <section id="result-section" class="hidden max-w-7xl mx-auto px-6 pt-10 pb-24">
+    <div class="flex gap-6">
+      <!-- 左侧：纵向 Tab 导航 + 返回 -->
+      <aside class="w-44 shrink-0 self-start sticky top-6">
+        <nav class="tab-nav-vertical bg-inkSoft rounded-xl2 p-2 flex flex-col gap-1">
+          <button class="tab-btn active" data-tab="cards">知识卡片</button>
+          <button class="tab-btn" data-tab="graph">概念图谱</button>
+          <button class="tab-btn" data-tab="chat">AI 追问</button>
+          <button class="tab-btn" data-tab="quiz">知识测验</button>
+        </nav>
+        <button id="export-md" class="mt-3 w-full text-sm py-2.5 px-3 rounded-xl2 transition text-left flex items-center gap-2"
+                style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); color: #c7d2fe;">
+          <span style="font-family: ui-monospace,monospace; font-size:12px">↓</span>
+          <span>导出笔记 .md</span>
+        </button>
+        <button id="back-btn" class="mt-2 w-full text-white/40 hover:text-white text-sm py-2 rounded-xl2 hover:bg-inkSoft transition text-left px-3">
+          ← 返回首页
+        </button>
+      </aside>
+
+      <!-- 右侧：Tab 内容区 -->
+      <div class="flex-1 min-w-0">
 
     <!-- Tab 1: 知识卡片 -->
     <div id="tab-cards" class="tab-panel">
@@ -165,9 +179,32 @@
     <!-- Tab 2: 概念图谱 -->
     <div id="tab-graph" class="tab-panel hidden">
       <div class="bg-inkSoft rounded-xl2 p-4 relative overflow-hidden">
-        <div class="text-sm text-white/40 mb-2 px-2">拖动节点 · 悬停查看说明</div>
-        <svg id="graph-svg" class="w-full" style="height: 600px"></svg>
-        <div id="graph-tooltip" class="hidden absolute bg-ink border border-inkLine rounded-xl2 p-3 max-w-xs text-sm shadow-card pointer-events-none z-10"></div>
+        <div class="flex items-center justify-between mb-2 px-2 text-sm text-white/40">
+          <span>拖动节点 · 悬停查看说明 · 滚轮缩放</span>
+          <span class="text-xs">大节点 = 知识中心，连线颜色代表关系类型</span>
+        </div>
+        <div class="relative">
+          <svg id="graph-svg" class="w-full" style="height: 600px"></svg>
+
+          <!-- 左上：控制面板 -->
+          <div id="graph-controls" class="absolute top-2 left-2 flex flex-col gap-2 z-10">
+            <button id="graph-play" class="graph-ctrl-btn graph-ctrl-primary" type="button">
+              <span class="graph-ctrl-icon">▶</span>
+              <span class="graph-ctrl-label">讲解</span>
+            </button>
+            <button id="graph-reset" class="graph-ctrl-btn graph-ctrl-sm" type="button" title="重置布局">
+              ↺ 重置
+            </button>
+          </div>
+
+          <!-- 右上：关系图例（由 JS 渲染） -->
+          <div id="graph-legend" class="absolute top-2 right-2 z-10"></div>
+
+          <!-- 底部：讲解模式时显示当前讲到哪个概念 -->
+          <div id="graph-tour-bar" class="hidden absolute left-0 right-0 bottom-0 px-4 py-3 bg-ink/90 border-t border-inkLine text-sm"></div>
+
+          <div id="graph-tooltip" class="hidden absolute bg-ink border border-inkLine rounded-xl2 p-3 max-w-xs text-sm shadow-card pointer-events-none z-20"></div>
+        </div>
       </div>
     </div>
 
@@ -196,8 +233,11 @@
         <div id="quiz-card" class="bg-inkSoft rounded-xl2 p-8"></div>
       </div>
     </div>
+
+      </div><!-- /right pane -->
+    </div><!-- /flex -->
   </section>
 
-  <script src="app.js?v=20260523a" charset="utf-8"></script>
+  <script src="app.js"></script>
 </body>
 </html>
