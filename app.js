@@ -11,28 +11,43 @@ window.__MOCK__ = {
   key_concepts: [
     {
       name: "事件视界",
-      explanation: "黑洞周围的一个临界球面，进入它以后任何信息都无法再返回外部宇宙。",
+      explanation: "[核心] 黑洞周围的一个临界球面，进入它以后任何信息都无法再返回外部宇宙。",
       analogy: "像瀑布顶端的「不可挽回点」——一旦水流过了那条线，再怎么挣扎都只能往下掉。",
     },
     {
-      name: "逃逸速度",
-      explanation: "要彻底摆脱一个天体引力束缚所需的最小速度。当逃逸速度超过光速时,黑洞就形成了。",
-      analogy: "像在蹦床上跳——蹦床越软（引力越强），你要跳得越用力才能离开。",
-    },
-    {
       name: "时空弯曲",
-      explanation: "广义相对论中,质量会使周围的时空发生几何变形,物体沿着弯曲的时空「直线」运动,表现为引力。",
+      explanation: "[核心] 广义相对论中,质量会使周围的时空发生几何变形,物体沿着弯曲的时空「直线」运动,表现为引力。",
       analogy: "像放在橡胶膜上的保龄球,周围会凹下去,小球滚过时会被吸过来。",
     },
     {
+      name: "逃逸速度",
+      explanation: "[分支] 要彻底摆脱一个天体引力束缚所需的最小速度。当逃逸速度超过光速时,黑洞就形成了。",
+      analogy: "像在蹦床上跳——蹦床越软（引力越强），你要跳得越用力才能离开。",
+    },
+    {
       name: "霍金辐射",
-      explanation: "量子效应导致黑洞视界附近不断有粒子-反粒子对产生,其中一部分逃逸出去,使黑洞缓慢蒸发。",
+      explanation: "[分支] 量子效应导致黑洞视界附近不断有粒子-反粒子对产生,其中一部分逃逸出去,使黑洞缓慢蒸发。",
       analogy: "像漏气的轮胎——看起来密封,实际每一秒都在微小地散发能量。",
     },
     {
       name: "奇点",
-      explanation: "黑洞中心理论上密度无限大、时空曲率无限大的点,目前物理定律在此失效。",
+      explanation: "[分支] 黑洞中心理论上密度无限大、时空曲率无限大的点,目前物理定律在此失效。",
       analogy: "像数学公式里的「除以零」——不是真的无穷大,而是模型在这里破了。",
+    },
+    {
+      name: "广义相对论",
+      explanation: "[细节] 爱因斯坦 1915 年提出的引力理论，是当前描述黑洞与宇宙大尺度结构的最佳框架。",
+      analogy: "像一本厚厚的菜谱，告诉你重的东西会让桌布凹下去。",
+    },
+    {
+      name: "吸积盘",
+      explanation: "[细节] 围绕黑洞旋转的高温气体盘，是我们能间接「看见」黑洞的主要光源。",
+      analogy: "像水流被吸进下水道前打转产生的漩涡。",
+    },
+    {
+      name: "EHT 望远镜",
+      explanation: "[细节] 全球协作的射电望远镜阵列，2019 年首次拍到 M87 黑洞的「照片」。",
+      analogy: "像八个朋友同时拍照拼起来还原一个超大场景。",
     },
   ],
   concept_relations: [
@@ -41,6 +56,11 @@ window.__MOCK__ = {
     { from: "事件视界", to: "霍金辐射", relation: "量子效应来源于" },
     { from: "事件视界", to: "奇点", relation: "包裹" },
     { from: "时空弯曲", to: "奇点", relation: "极端表现" },
+    { from: "广义相对论", to: "时空弯曲", relation: "依赖于" },
+    { from: "广义相对论", to: "事件视界", relation: "包含" },
+    { from: "事件视界", to: "吸积盘", relation: "导致形成" },
+    { from: "EHT 望远镜", to: "吸积盘", relation: "依赖" },
+    { from: "霍金辐射", to: "奇点", relation: "对比" },
   ],
   key_points: [
     { point: "黑洞不是「洞」,而是一个极端致密的天体", timestamp: "00:32", importance: "high" },
@@ -109,7 +129,32 @@ const state = {
   pendingSources: new Map(),
   // 当前 state.result 是不是从 localStorage 历史还原的（true 时聊天要把 analysis 一起发给后端）
   fromHistory: false,
+  // huguangyu 三栏图谱用：左侧筛选状态 + 右侧掌握标记
+  learning: {
+    mastered: new Set(),
+    visibleLevels: new Set(["core", "branch", "leaf", "unknown"]),
+    visibleRelations: null,
+  },
 };
+
+/* ---------- 概念层级（从 explanation 前缀 [核心]/[分支]/[细节] 提取） ---------- */
+const LEVEL_TAG_RE = /^\s*\[\s*(核心|分支|细节)\s*\]\s*/;
+const LEVEL_STYLE = {
+  core:    { fill: "#fbbf24", stroke: "#fde68a", radius: 36, label: "核心" },
+  branch:  { fill: "#818cf8", stroke: "#c7d2fe", radius: 28, label: "分支" },
+  leaf:    { fill: "#5b4ddc", stroke: "#818cf8", radius: 22, label: "细节" },
+  unknown: { fill: "#4b5169", stroke: "#6b7180", radius: 22, label: "未分级" },
+};
+function extractLevel(explanation) {
+  if (!explanation) return null;
+  const m = explanation.match(LEVEL_TAG_RE);
+  if (!m) return null;
+  return { "核心": "core", "分支": "branch", "细节": "leaf" }[m[1]];
+}
+function cleanExplanation(explanation) {
+  if (!explanation) return "";
+  return explanation.replace(LEVEL_TAG_RE, "");
+}
 
 /* ---------- DOM 引用 ---------- */
 const $ = (sel) => document.querySelector(sel);
@@ -558,6 +603,9 @@ function renderResult(data) {
     state.chatHistory = [];
     state.quiz = { idx: 0, correct: 0, answered: false, wrong: [] };
     state.selectedConcept = null;
+    state.learning.mastered = new Set();
+    state.learning.visibleLevels = new Set(["core", "branch", "leaf", "unknown"]);
+    state.learning.visibleRelations = null;
 
     // 切到结果区（淡出 overlay）
     setTimeout(() => {
@@ -647,6 +695,11 @@ function renderResult(data) {
 
     // Tab 4 测验
     renderQuiz();
+
+    // 整合视图：左侧筛选 + 右侧概念清单
+    renderFilterPanel();
+    renderConceptListPanel();
+    updateLearnProgress();
   } catch (err) {
     console.error("renderResult failed:", err);
     hideProgressOverlay();
@@ -770,11 +823,15 @@ function renderGraph(highlightName) {
   svg.attr("viewBox", `0 0 ${width} ${height}`);
 
   // ---- 节点 & 链接数据 ----
-  const nodes = concepts.map((c) => ({
-    id: c.name,
-    explanation: c.explanation,
-    analogy: c.analogy,
-  }));
+  const nodes = concepts.map((c) => {
+    const lv = extractLevel(c.explanation);
+    return {
+      id: c.name,
+      explanation: cleanExplanation(c.explanation),
+      analogy: c.analogy,
+      level: lv,                  // "core" / "branch" / "leaf" / null
+    };
+  });
   const links = rels
     .map((r) => ({
       source: r.from,
@@ -802,8 +859,13 @@ function renderGraph(highlightName) {
   const maxScore = Math.max(...nodes.map((n) => rawScore(n.id)), 1);
   nodes.forEach((n) => {
     n.score = rawScore(n.id) / maxScore;
-    n.radius = 22 + n.score * 22;     // 22..44
-    n.isCore = n.score >= 0.7;
+    if (n.level) {
+      n.radius = LEVEL_STYLE[n.level].radius;
+      n.isCore = n.level === "core";
+    } else {
+      n.radius = 22 + n.score * 22;
+      n.isCore = n.score >= 0.7;
+    }
   });
 
   // ---- 邻接表 ----
@@ -908,10 +970,14 @@ function renderGraph(highlightName) {
     .append("circle")
     .attr("class", "node-bg")
     .attr("r", (d) => d.radius)
-    .attr("fill", (d) => d3.interpolateRgb("#3730a3", "#a5b4fc")(d.score))
+    .attr("fill", (d) => d.level
+      ? LEVEL_STYLE[d.level].fill
+      : d3.interpolateRgb("#3730a3", "#a5b4fc")(d.score))
     .attr("fill-opacity", 0.95)
-    .attr("stroke", (d) => d.isCore ? "#fde68a" : "#c7d2fe")
-    .attr("stroke-width", (d) => d.isCore ? 2.5 : 1.5)
+    .attr("stroke", (d) => d.level
+      ? LEVEL_STYLE[d.level].stroke
+      : (d.isCore ? "#fde68a" : "#c7d2fe"))
+    .attr("stroke-width", (d) => d.isCore ? 2.8 : 1.5)
     .attr("filter", (d) => d.isCore ? "url(#node-glow)" : null);
 
   node
@@ -920,6 +986,7 @@ function renderGraph(highlightName) {
     .attr("dy", 4)
     .attr("font-size", (d) => Math.round(Math.max(11, Math.min(15, 10 + d.score * 6))))
     .attr("font-weight", (d) => d.isCore ? 700 : 500)
+    .attr("fill", (d) => d.level === "core" ? "#1a1d29" : "#fff")
     .text((d) => d.id);
 
   // ---- 邻域聚焦 ----
@@ -1049,6 +1116,176 @@ function bindGraphControls(ctx) {
       ctx.sim.alpha(0.7).restart();
     };
   }
+  // 学习进度重置
+  const learnReset = $("#learn-reset");
+  if (learnReset) {
+    learnReset.onclick = () => {
+      state.learning.mastered = new Set();
+      updateLearnProgress();
+      renderConceptListPanel();
+    };
+  }
+}
+
+/* ============================================================
+ * 整合视图：左侧筛选 + 右侧学习清单 + 学习进度
+ * ============================================================ */
+function renderFilterPanel() {
+  if (!state.result) return;
+  const concepts = state.result.key_concepts || [];
+  const relations = state.result.concept_relations || [];
+
+  // 统计每个 level 的概念数 + 关系类型分布
+  const levelCount = { core: 0, branch: 0, leaf: 0, unknown: 0 };
+  concepts.forEach((c) => {
+    const lv = extractLevel(c.explanation) || "unknown";
+    levelCount[lv]++;
+  });
+  const relCount = {};
+  relations.forEach((r) => {
+    const t = classifyRelation(r.relation);
+    if (t === "default") return;
+    relCount[t] = (relCount[t] || 0) + 1;
+  });
+
+  // 概念层级（仅显示有数据的层级）
+  const levelsEl = $("#filter-levels");
+  if (levelsEl) {
+    const levels = ["core", "branch", "leaf", "unknown"].filter((l) => levelCount[l] > 0);
+    levelsEl.innerHTML = levels.map((lv) => `
+      <label class="filter-row" data-key="${lv}">
+        <input type="checkbox" data-level="${lv}" ${state.learning.visibleLevels.has(lv) ? "checked" : ""} />
+        <span class="filter-swatch" style="background:${LEVEL_STYLE[lv].fill}; border-color:${LEVEL_STYLE[lv].stroke}"></span>
+        <span class="filter-label">${LEVEL_STYLE[lv].label}</span>
+        <span class="filter-count">${levelCount[lv]}</span>
+      </label>
+    `).join("");
+    levelsEl.querySelectorAll("input[data-level]").forEach((cb) => {
+      cb.addEventListener("change", (e) => {
+        const lv = e.target.dataset.level;
+        if (e.target.checked) state.learning.visibleLevels.add(lv);
+        else state.learning.visibleLevels.delete(lv);
+        applyGraphFilters();
+      });
+    });
+  }
+
+  // 关系类型
+  const relsEl = $("#filter-relations");
+  if (relsEl) {
+    const types = Object.keys(relCount);
+    if (!types.length) {
+      relsEl.innerHTML = '<div class="text-xs text-white/30 px-1">无关系信息</div>';
+    } else {
+      const isOn = (t) => state.learning.visibleRelations == null || state.learning.visibleRelations.has(t);
+      relsEl.innerHTML = types.map((t) => `
+        <label class="filter-row" data-key="${t}">
+          <input type="checkbox" data-rel="${t}" ${isOn(t) ? "checked" : ""} />
+          <span class="filter-swatch" style="background:${relationColor(t)}; border-color:${relationColor(t)}"></span>
+          <span class="filter-label">${RELATION_TYPES[t].label}</span>
+          <span class="filter-count">${relCount[t]}</span>
+        </label>
+      `).join("");
+      relsEl.querySelectorAll("input[data-rel]").forEach((cb) => {
+        cb.addEventListener("change", () => {
+          // 收集当前所有 checked 的关系类型
+          const checked = new Set();
+          relsEl.querySelectorAll("input[data-rel]:checked").forEach((c) => checked.add(c.dataset.rel));
+          state.learning.visibleRelations =
+            checked.size === types.length ? null : checked;
+          applyGraphFilters();
+        });
+      });
+    }
+  }
+
+  // 统计行
+  const stats = $("#graph-stats");
+  if (stats) {
+    stats.textContent = `节点 ${concepts.length} · 连线 ${relations.length}`;
+  }
+}
+
+function applyGraphFilters() {
+  // 节点：按 level 显示/隐藏（在 SVG 上加 .filtered class）
+  const svg = d3.select("#graph-svg");
+  svg.selectAll(".node").classed("filtered", (d) => {
+    const lv = d.level || "unknown";
+    return !state.learning.visibleLevels.has(lv);
+  });
+  svg.selectAll(".link").classed("filtered", (d) => {
+    const visibleRel =
+      state.learning.visibleRelations == null ||
+      state.learning.visibleRelations.has(d.type);
+    const sLv = (d.source.level) || "unknown";
+    const tLv = (d.target.level) || "unknown";
+    const visibleEnds =
+      state.learning.visibleLevels.has(sLv) &&
+      state.learning.visibleLevels.has(tLv);
+    return !(visibleRel && visibleEnds);
+  });
+  svg.selectAll(".link-label").classed("filtered", function (d, i) {
+    const link = svg.selectAll(".link").nodes()[i];
+    return link ? link.classList.contains("filtered") : false;
+  });
+  svg.selectAll(".particle").classed("filtered", function (d, i) {
+    const link = svg.selectAll(".link").nodes()[i];
+    return link ? link.classList.contains("filtered") : false;
+  });
+}
+
+function renderConceptListPanel() {
+  const el = $("#concept-list-panel");
+  if (!el) return;
+  const concepts = state.result?.key_concepts || [];
+  if (!concepts.length) {
+    el.innerHTML = '<div class="text-xs text-white/30 py-2">暂无概念</div>';
+    return;
+  }
+  // 按 level 排序：core > branch > leaf > unknown
+  const order = { core: 0, branch: 1, leaf: 2, unknown: 3 };
+  const sorted = [...concepts].sort((a, b) => {
+    const la = extractLevel(a.explanation) || "unknown";
+    const lb = extractLevel(b.explanation) || "unknown";
+    return order[la] - order[lb];
+  });
+  el.innerHTML = sorted.map((c) => {
+    const lv = extractLevel(c.explanation) || "unknown";
+    const mastered = state.learning.mastered.has(c.name);
+    return `
+      <div class="concept-list-item ${mastered ? "is-mastered" : ""}" data-concept="${escapeHtml(c.name)}">
+        <span class="cli-dot" style="background:${LEVEL_STYLE[lv].fill}"></span>
+        <span class="cli-name">${escapeHtml(c.name)}</span>
+        <button class="cli-toggle" data-action="toggle" title="${mastered ? "标为未掌握" : "标为已掌握"}">
+          ${mastered ? "✓" : "○"}
+        </button>
+      </div>`;
+  }).join("");
+  el.querySelectorAll(".concept-list-item").forEach((row) => {
+    const name = row.dataset.concept;
+    row.addEventListener("click", (e) => {
+      if (e.target.closest("[data-action=toggle]")) return;
+      // 在图谱里高亮
+      if (_graphApi) _graphApi.pulse(name);
+    });
+    row.querySelector("[data-action=toggle]").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (state.learning.mastered.has(name)) state.learning.mastered.delete(name);
+      else state.learning.mastered.add(name);
+      updateLearnProgress();
+      renderConceptListPanel();
+    });
+  });
+}
+
+function updateLearnProgress() {
+  const total = state.result?.key_concepts?.length || 0;
+  const done = state.learning.mastered.size;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const bar = $("#learn-progress-bar");
+  const txt = $("#learn-progress-text");
+  if (bar) bar.style.width = pct + "%";
+  if (txt) txt.textContent = `${done} / ${total} 个 · ${pct}%`;
 }
 
 function startTour(ctx) {

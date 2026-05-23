@@ -706,6 +706,141 @@ body {
   animation: hero-rise 0.7s 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* ============================================================
+ * v4 整合视图：三栏布局 + 过滤面板 + 学习清单
+ * ============================================================ */
+.panel-section-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 600;
+}
+
+/* 过滤行 */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.78);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.filter-row:hover { background: rgba(255, 255, 255, 0.04); }
+.filter-row input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: #6366f1;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.filter-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+.filter-label { flex: 1; }
+.filter-count {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: ui-monospace, SFMono-Regular, monospace;
+}
+
+/* 布局切换按钮 */
+.layout-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.layout-btn:hover { background: rgba(99, 102, 241, 0.18); color: #fff; }
+.layout-btn.active {
+  background: rgba(99, 102, 241, 0.32);
+  color: #fff;
+  border-color: #818cf8;
+}
+
+/* 概念清单行 */
+.concept-list-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  background: rgba(34, 38, 54, 0.7);
+  border: 1px solid #2d3146;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.concept-list-item:hover {
+  background: rgba(99, 102, 241, 0.12);
+  border-color: #6366f1;
+  transform: translateX(-2px);
+}
+.concept-list-item.is-mastered {
+  background: rgba(34, 197, 94, 0.08);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+.concept-list-item.is-mastered .cli-name {
+  color: rgba(255, 255, 255, 0.55);
+}
+.cli-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 4px currentColor;
+}
+.cli-name {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cli-toggle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cli-toggle:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: #fff;
+}
+.concept-list-item.is-mastered .cli-toggle {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+
+/* 节点/连线过滤态：渐隐 */
+#graph-svg .node.filtered { opacity: 0.08; pointer-events: none; }
+#graph-svg .link.filtered { stroke-opacity: 0.04 !important; }
+#graph-svg .link-label.filtered { opacity: 0; }
+#graph-svg .particle.filtered { opacity: 0 !important; }
+
+/* 整合视图容器 */
+.integrated-view { min-height: 660px; }
+.integrated-view aside { backdrop-filter: blur(4px); }
+
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
   width: 8px;
