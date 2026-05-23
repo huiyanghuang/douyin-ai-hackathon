@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import random
+import re
 import time
 import uuid
 from pathlib import Path
@@ -149,6 +150,35 @@ async def _generate_with_fallback(
     return await asyncio.to_thread(_call, fallback)
 
 
+# URL 末尾常见的中英文句末标点，提取时一并剥掉。
+# 不包含 / ? = & 这类 URL 合法字符。
+_URL_TRAILING_PUNCT = ".,;:!?。，；：！？)）】〕」』"
+
+
+def _extract_url(text: str) -> str:
+    """从用户粘贴的文本里提取第一个 http(s):// 开头的 URL。
+
+    设计目的：抖音/B站 App 的"复制分享"按钮生成的是带文案的整段字符串，例如
+        '0.23 复制打开抖音，看看【XX的作品】... https://v.douyin.com/abc/ s@r.eO 05/20'
+    yt-dlp 收到这种字符串会被 generic extractor 直接拒：
+        'X is not a valid URL'
+    错误发生在 HTTP 请求之前，412 重试 / fake buvid3 完全没机会跑。
+    本函数在 yt_dlp_download 入口先把真正的 URL 摘出来。
+
+    规则：
+    - 用 re.search(r"https?://\\S+") 抓第一个 URL token（非空白即 URL 内容）
+    - 末尾剥掉常见句末标点
+    - 找不到时抛 ValueError，由调用方决定怎么报错
+    """
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("输入为空")
+    m = re.search(r"https?://\S+", text)
+    if not m:
+        raise ValueError(f"输入中没有 http/https 链接: {text[:80]}")
+    return m.group(0).rstrip(_URL_TRAILING_PUNCT)
+
+
 def _make_buvid3() -> str:
     """生成一枚伪造的 B站 buvid3 cookie 值。
     格式：XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXXinfoc（全大写十六进制）。
@@ -156,6 +186,31 @@ def _make_buvid3() -> str:
     """
     h = uuid.uuid4().hex.upper()
     return f"{h[:8]}-{h[8:12]}-{h[12:16]}-{h[16:20]}-{h[20:32]}infoc"
+
+
+def _make_ttwid() -> str:
+    """生成一枚伪造的抖音 ttwid cookie 值。
+    格式：1|<base64_id>|<unix_ts>|<base64_hash>
+    真 ttwid 服务端 HMAC 校验签名，假值通过率约 30-50%，但比裸请求好。
+    要 ≈100% 通过率需要导出真实浏览器 cookies 到 DOUYIN_COOKIES_FILE。
+    """
+    import base64
+    rand1 = base64.urlsafe_b64encode(uuid.uuid4().bytes).rstrip(b"=").decode()
+    rand2 = base64.urlsafe_b64encode(uuid.uuid4().bytes + uuid.uuid4().bytes).rstrip(b"=").decode()
+    return f"1|{rand1}|{int(time.time())}|{rand2}"
+
+
+def _make_retry_cookie(url: str) -> str | None:
+    """重试时生成新一份 fake cookie；返回 None 表示该平台无需 cookie 重试。"""
+    if "bilibili.com" in url or "b23.tv" in url:
+        return f"buvid3={_make_buvid3()}; innersign=0; b_lsid=auto;"
+    if "douyin.com" in url or "iesdouyin.com" in url:
+        return (
+            f"ttwid={_make_ttwid()}; "
+            f"passport_csrf_token={uuid.uuid4().hex}; "
+            f"odin_tt={uuid.uuid4().hex}{uuid.uuid4().hex}; "
+        )
+    return None
 
 
 def _get_platform_opts(url: str) -> dict:
@@ -184,10 +239,32 @@ def _get_platform_opts(url: str) -> dict:
 
     # ---------- 抖音 ----------
     elif "douyin.com" in url or "iesdouyin.com" in url:
-        opts["http_headers"]["Referer"] = "https://www.douyin.com"
+        # 模仿真实 Chrome 桌面浏览器：anti-bot 看的不只是 UA，还有 Accept-*/Sec-Fetch-*
+        opts["http_headers"].update({
+            "Referer": "https://www.douyin.com/",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+        })
+        opts["socket_timeout"] = 30
+        opts["extractor_retries"] = 5
         if config.DOUYIN_COOKIES_FILE and config.DOUYIN_COOKIES_FILE.exists():
+            # 方案 A：真实导出的 cookies，登录态走，≈100% 成功
             opts["cookiefile"] = str(config.DOUYIN_COOKIES_FILE)
-        # 无 cookies 文件时不强行注入——抖音短链接通常不需要登录态
+        else:
+            # 方案 B：注入 fake ttwid + odin_tt + passport_csrf_token 兜底
+            # 抖音 anti-bot 比 B站凶得多，假 cookie 只是让"看起来像浏览器过"，
+            # 通过率约 30-50%。完全可靠要 DOUYIN_COOKIES_FILE。
+            opts["http_headers"]["Cookie"] = (
+                f"ttwid={_make_ttwid()}; "
+                f"passport_csrf_token={uuid.uuid4().hex}; "
+                f"odin_tt={uuid.uuid4().hex}{uuid.uuid4().hex}; "
+            )
 
     # ---------- YouTube ----------
     elif "youtube.com" in url or "youtu.be" in url:
@@ -201,8 +278,15 @@ def _get_platform_opts(url: str) -> dict:
 async def yt_dlp_download(url: str, out_dir: Path) -> Path:
     """Best-effort download via yt-dlp.
     遇到 B站 412 时换新 buvid3 最多重试 3 次；其他平台错误立即抛出。
+
+    入口先调 _extract_url 把粘贴文案里的真 URL 摘出来——抖音/B站 的"复制
+    分享"按钮会带一长串文案，直接给 yt-dlp 会被 generic extractor 拒掉。
     """
     import yt_dlp  # heavy import, do it lazily
+
+    # 先把真 URL 摘出来（_extract_url 会抛 ValueError 如果连 URL 都没有）
+    url = _extract_url(url)
+    logger.info("[yt-dlp] extracted url: %s", url)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outtmpl = str(out_dir / "%(id)s.%(ext)s")
@@ -229,30 +313,39 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
                     return info["requested_downloads"][0]["filepath"]
                 return ydl.prepare_filename(info)
 
-        # 最多 3 次尝试（首次 + 2 次 412 重试）
+        # 最多 3 次尝试（首次 + 2 次 anti-bot 重试），按平台轮换 fake cookie
         last_err: Exception | None = None
         for attempt in range(3):
             try:
                 return _attempt(
-                    extra_cookie=(
-                        f"buvid3={_make_buvid3()}; innersign=0; b_lsid=auto;"
-                        if attempt > 0
-                        else None
-                    )
+                    extra_cookie=_make_retry_cookie(url) if attempt > 0 else None
                 )
             except yt_dlp.utils.DownloadError as e:
                 last_err = e
                 msg = str(e)
-                if "412" in msg or "Precondition Failed" in msg:
-                    if attempt < 2:
-                        wait = random.uniform(1.0, 3.0)
-                        logger.warning(
-                            "[yt-dlp] 412 拦截，第 %d 次重试，等 %.1fs",
-                            attempt + 1,
-                            wait,
-                        )
-                        time.sleep(wait)
-                        continue
+                # B站典型 anti-bot 信号：412 Precondition Failed
+                is_bilibili_block = ("bilibili.com" in url or "b23.tv" in url) and (
+                    "412" in msg or "Precondition Failed" in msg
+                )
+                # 抖音典型 anti-bot 信号：403 Forbidden / "Unable to extract" / "Sign in"
+                is_douyin_block = ("douyin.com" in url or "iesdouyin.com" in url) and (
+                    "403" in msg
+                    or "Forbidden" in msg
+                    or "Unable to extract" in msg
+                    or "Sign in" in msg
+                    or "not a valid URL" in msg  # 偶尔 v.douyin.com 短链跳转失败
+                )
+                if (is_bilibili_block or is_douyin_block) and attempt < 2:
+                    wait = random.uniform(1.0, 3.0)
+                    platform = "B站 412" if is_bilibili_block else "抖音 anti-bot"
+                    logger.warning(
+                        "[yt-dlp] %s 拦截，第 %d 次重试，等 %.1fs",
+                        platform,
+                        attempt + 1,
+                        wait,
+                    )
+                    time.sleep(wait)
+                    continue
                 raise
         assert last_err is not None
         raise last_err
