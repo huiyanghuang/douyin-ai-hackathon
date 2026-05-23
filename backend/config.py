@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
 
-GEMINI_API_KEY = os.environ.get(
-    "GEMINI_API_KEY",
-    "AIzaSyBfL5MxLtht8NcVayzNg8AtKhORrxMeeXU",
-)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise RuntimeError(
+        "GEMINI_API_KEY env var not set. "
+        "Set it via /etc/douyin-backend.env (loaded by systemd) or your shell."
+    )
 
 MODEL_ANALYZE = "gemini-2.5-pro"
 MODEL_CHAT = "gemini-2.5-flash"
