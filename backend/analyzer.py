@@ -350,7 +350,10 @@ def _get_platform_opts(url: str, bootstrap_cookies_path: str | None = None) -> d
     elif "youtube.com" in url or "youtu.be" in url:
         if config.YOUTUBE_COOKIES_FILE and config.YOUTUBE_COOKIES_FILE.exists():
             opts["cookiefile"] = str(config.YOUTUBE_COOKIES_FILE)
-        # 无 cookies 时 yt-dlp 默认 YouTube 提取器已足够
+        # YouTube 在视频流 URL 上加了 n-参数 JS 挑战，必须用 EJS solver 跑 deno 才能拿到
+        # 真实下载 URL。yt-dlp 默认不自动下 solver 脚本（安全），这里显式启用 GitHub 源。
+        # 前置依赖：服务器装了 deno（/usr/local/bin/deno）和 ffmpeg（合并分离视频/音频流）。
+        opts["remote_components"] = {"ejs:github"}
 
     return opts
 
