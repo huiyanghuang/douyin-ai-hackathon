@@ -117,15 +117,28 @@ body {
   opacity: 0.7;
 }
 
-/* ---- 历史卡片 × 删除按钮：始终可见 ---- */
+/* ---- 历史卡片 × 删除按钮：始终可见 + 永远在 thumb 之上 ---- */
 .demo-card .history-del {
   opacity: 1 !important;
   background: rgba(0, 0, 0, 0.55) !important;
   color: rgba(255, 255, 255, 0.7) !important;
+  /* hover 时 .demo-thumb 有 transform scale，会创建新 stacking context 并
+     覆盖兄弟元素。给 × 显式 z-index 把它压回顶层。 */
+  z-index: 10;
 }
 .demo-card .history-del:hover {
   background: #ef4444 !important;
   color: #fff !important;
+  /* hover 时再放大一点点+提层，确保即使 thumb 同时 hover-scale 也压不下来 */
+  z-index: 11;
+  transform: scale(1.1);
+}
+/* hover 卡片时禁用 thumb 的放大对 × 区域的几何覆盖（thumb 仍放大，但 × 在它之上）
+   因 thumb 是 absolute/static 元素并 transform，必须靠 z-index 而非 stacking order 解决，
+   上面 z-index: 10 已解决；这里把 thumb 自身限制在更低层以确保稳定。 */
+.demo-card .demo-thumb {
+  position: relative;
+  z-index: 1;
 }
 
 
