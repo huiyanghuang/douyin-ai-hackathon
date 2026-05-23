@@ -391,8 +391,7 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
     if is_douyin and not has_user_douyin and bootstrap_cookies_path is None:
         raise RuntimeError(
             "抖音从本服务器无法匿名访问（海外机房 IP 被 anti-bot 拦截）。"
-            "请联系管理员上传 cookies.txt 并配置 DOUYIN_COOKIES_FILE 环境变量；"
-            "或改用文件上传"
+            "请联系管理员上传 cookies.txt 并配置 DOUYIN_COOKIES_FILE 环境变量"
         )
 
     def _do() -> str:
@@ -445,16 +444,14 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
                 # 重试耗尽：把晦涩的 yt-dlp 错误包成清楚的中文，提示走 cookies 文件
                 if is_bilibili_block:
                     raise RuntimeError(
-                        "B站 anti-bot 拦截（412 Precondition Failed）。"
-                        "海外机房 IP 即便发完整浏览器请求也常被拦。"
-                        "请管理员在 B站登录后导出 cookies.txt 配置 BILIBILI_COOKIES_FILE 环境变量；"
-                        "或改用文件上传。"
+                        "B站 anti-bot 拦截。海外机房 IP 即便发完整浏览器请求也常被拦"
+                        "（包括 412 / JSON 解析失败等变种）。"
+                        "请管理员在 B站登录后导出 cookies.txt 配置 BILIBILI_COOKIES_FILE 环境变量"
                     ) from e
                 if is_douyin_block:
                     raise RuntimeError(
                         "抖音 anti-bot 拦截。"
-                        "请管理员在抖音登录后导出 cookies.txt 配置 DOUYIN_COOKIES_FILE 环境变量；"
-                        "或改用文件上传。"
+                        "请管理员在抖音登录后导出 cookies.txt 配置 DOUYIN_COOKIES_FILE 环境变量"
                     ) from e
                 raise
         assert last_err is not None
