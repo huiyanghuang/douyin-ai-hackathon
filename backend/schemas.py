@@ -99,3 +99,24 @@ class DemoItem(BaseModel):
     title: str
     thumb: str | None = None
     cached_result: dict[str, Any]
+
+
+# ---------- Auth ----------
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class UserInfo(BaseModel):
+    id: int
+    username: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: UserInfo

@@ -17,16 +17,27 @@ import uuid
 from pathlib import Path
 
 import aiofiles
-from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from . import config
+from . import auth, config
 from .analyzer import analyze_video, yt_dlp_download
 from .chat_service import chat_reply
-from .schemas import AnalyzeAccepted, ChatRequest, ChatResponse
+from .schemas import (
+    AnalyzeAccepted,
+    AuthResponse,
+    ChatRequest,
+    ChatResponse,
+    LoginRequest,
+    RegisterRequest,
+    UserInfo,
+)
 from .store import store
+
+auth.set_db_path(config.AUTH_DB_PATH)
+auth.init_db()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +59,65 @@ app.add_middleware(
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
+
+
+# ============================================================
+# 用户认证 /api/auth/*
+# ============================================================
+def _extract_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    if authorization.lower().startswith("bearer "):
+        return authorization[7:].strip()
+    return authorization.strip() or None
+
+
+async def get_optional_user(authorization: str | None = Header(default=None)) -> dict | None:
+    """从 Authorization 头解析当前用户；无 token / 无效 → None。"""
+    token = _extract_token(authorization)
+    if not token:
+        return None
+    return await asyncio.to_thread(auth.get_session_user, token)
+
+
+async def get_required_user(user: dict | None = Depends(get_optional_user)) -> dict:
+    if user is None:
+        raise HTTPException(401, "未登录或登录已过期")
+    return user
+
+
+@app.post("/api/auth/register", response_model=AuthResponse, status_code=201)
+async def register(req: RegisterRequest) -> AuthResponse:
+    try:
+        user = await asyncio.to_thread(auth.register_user, req.username, req.password)
+    except auth.UsernameTakenError as e:
+        raise HTTPException(409, str(e))
+    except auth.InvalidCredentialError as e:
+        raise HTTPException(400, str(e))
+    token = await asyncio.to_thread(auth.create_session, user["id"])
+    return AuthResponse(token=token, user=UserInfo(**user))
+
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+async def login(req: LoginRequest) -> AuthResponse:
+    uid = await asyncio.to_thread(auth.verify_password, req.username, req.password)
+    if uid is None:
+        raise HTTPException(401, "用户名或密码错误")
+    token = await asyncio.to_thread(auth.create_session, uid)
+    return AuthResponse(token=token, user=UserInfo(id=uid, username=req.username))
+
+
+@app.get("/api/auth/me", response_model=UserInfo)
+async def me(user: dict = Depends(get_required_user)) -> UserInfo:
+    return UserInfo(**user)
+
+
+@app.post("/api/auth/logout", status_code=204)
+async def logout(authorization: str | None = Header(default=None)) -> None:
+    token = _extract_token(authorization)
+    if token:
+        await asyncio.to_thread(auth.delete_session, token)
+    return None
 
 
 @app.post("/api/analyze", response_model=AnalyzeAccepted)
