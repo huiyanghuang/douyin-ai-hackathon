@@ -24,3 +24,23 @@ TASK_TTL_SECONDS = 60 * 60 * 2
 
 # 用户认证：SQLite 数据库路径
 AUTH_DB_PATH = Path(os.environ.get("AUTH_DB_PATH", "_data/dyhk_auth.db")).resolve()
+
+# 各平台 Cookies 文件（可选，Netscape/Mozilla cookies.txt 格式）。
+# 通过环境变量传入：留空就走 fake-header 兜底；指向真实导出的 cookies 文件
+# 就用登录态，B站 412 / 抖音 403 概率显著降低。
+# 浏览器插件 "Get cookies.txt LOCALLY" 可一键导出。
+BILIBILI_COOKIES_FILE = (
+    Path(os.environ["BILIBILI_COOKIES_FILE"]).resolve()
+    if os.environ.get("BILIBILI_COOKIES_FILE")
+    else None
+)
+DOUYIN_COOKIES_FILE = (
+    Path(os.environ["DOUYIN_COOKIES_FILE"]).resolve()
+    if os.environ.get("DOUYIN_COOKIES_FILE")
+    else None
+)
+YOUTUBE_COOKIES_FILE = (
+    Path(os.environ["YOUTUBE_COOKIES_FILE"]).resolve()
+    if os.environ.get("YOUTUBE_COOKIES_FILE")
+    else None
+)
