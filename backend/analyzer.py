@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import http.cookiejar
 import json
 import logging
+import os
 import random
 import re
+import tempfile
 import time
+import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any
@@ -213,10 +217,70 @@ def _make_retry_cookie(url: str) -> str | None:
     return None
 
 
-def _get_platform_opts(url: str) -> dict:
+def _bootstrap_session_cookies(url: str) -> str | None:
+    """先用真浏览器 headers 访问平台首页，让对方主动 Set-Cookie 给我们 anonymous
+    anti-bot cookies（ttwid/buvid3/...），存到 temp Netscape cookies.txt 返回。
+
+    Why: yt-dlp 抖音 extractor 报错 "Fresh cookies (not necessarily logged in)
+    are needed"——它从 cookiejar 读 cookie，不读 http_headers["Cookie"]，所以
+    我们之前塞 fake header 的方案对 extractor 不可见。访问首页是最稳妥的拿真
+    cookies 方式（首页本来就是 anonymous 设计，不需要登录）。
+
+    Returns: temp cookies file path（调用方负责 unlink），None 表示首页访问失败。
+    """
+    if "douyin.com" in url or "iesdouyin.com" in url:
+        homepage = "https://www.douyin.com/"
+    elif "bilibili.com" in url or "b23.tv" in url:
+        homepage = "https://www.bilibili.com/"
+    else:
+        return None
+
+    fd, cookie_path = tempfile.mkstemp(suffix=".cookies.txt", prefix="dyhk_yt_")
+    os.close(fd)
+
+    jar = http.cookiejar.MozillaCookieJar(cookie_path)
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    opener.addheaders = [
+        ("User-Agent", _BROWSER_UA),
+        ("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"),
+        ("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8"),
+        ("Sec-Fetch-Dest", "document"),
+        ("Sec-Fetch-Mode", "navigate"),
+        ("Sec-Fetch-Site", "none"),
+        ("Upgrade-Insecure-Requests", "1"),
+    ]
+    try:
+        with opener.open(homepage, timeout=15) as resp:
+            resp.read(4096)  # 读一点让 Set-Cookie 完成处理
+        n = len(list(jar))
+        if n == 0:
+            logger.warning("[yt-dlp] homepage %s set no cookies", homepage)
+            try:
+                os.unlink(cookie_path)
+            except OSError:
+                pass
+            return None
+        jar.save(ignore_discard=True, ignore_expires=True)
+        logger.info("[yt-dlp] bootstrapped %d cookies from %s -> %s", n, homepage, cookie_path)
+        return cookie_path
+    except Exception as e:  # noqa: BLE001
+        logger.warning("[yt-dlp] bootstrap cookies failed for %s: %s", homepage, e)
+        try:
+            os.unlink(cookie_path)
+        except OSError:
+            pass
+        return None
+
+
+def _get_platform_opts(url: str, bootstrap_cookies_path: str | None = None) -> dict:
     """根据 URL 域名返回平台特定的 yt-dlp 选项补丁。
-    无状态——所有凭证只从 config（即环境变量）读取，不接受用户输入。
-    将来要支持用户登录态时，在 API 路由层做 auth，这里保持纯净不动。
+
+    cookies 三级回落：
+    1) 用户配置的 *_COOKIES_FILE（最稳，登录态 ≈100%）
+    2) 本进程访问首页 bootstrap 的 anonymous cookies（中等，extractor 实际能读）
+    3) fake Cookie HTTP header（最次，extractor 经常不读它，所以兜底意义有限）
+
+    bootstrap_cookies_path 由上层 yt_dlp_download 一次性 bootstrap 后传进来。
     """
     opts: dict[str, Any] = {
         "http_headers": {"User-Agent": _BROWSER_UA},
@@ -229,10 +293,12 @@ def _get_platform_opts(url: str) -> dict:
         opts["http_headers"]["Referer"] = "https://www.bilibili.com"
         opts["http_headers"]["Origin"] = "https://www.bilibili.com"
         if config.BILIBILI_COOKIES_FILE and config.BILIBILI_COOKIES_FILE.exists():
-            # 方案 A：有真实 cookies 文件，登录态走，≈100% 成功
             opts["cookiefile"] = str(config.BILIBILI_COOKIES_FILE)
+        elif bootstrap_cookies_path:
+            # 真 anonymous cookies 来自 bilibili.com 首页，yt-dlp extractor 能读
+            opts["cookiefile"] = bootstrap_cookies_path
         else:
-            # 方案 B：注入 fake buvid3，绕过 412 裸请求拦截，≈80% 成功
+            # bootstrap 失败时的最次兜底
             opts["http_headers"]["Cookie"] = (
                 f"buvid3={_make_buvid3()}; innersign=0; b_lsid=auto;"
             )
@@ -254,12 +320,12 @@ def _get_platform_opts(url: str) -> dict:
         opts["socket_timeout"] = 30
         opts["extractor_retries"] = 5
         if config.DOUYIN_COOKIES_FILE and config.DOUYIN_COOKIES_FILE.exists():
-            # 方案 A：真实导出的 cookies，登录态走，≈100% 成功
             opts["cookiefile"] = str(config.DOUYIN_COOKIES_FILE)
+        elif bootstrap_cookies_path:
+            # 真 anonymous cookies 来自 douyin.com 首页，extractor "Fresh cookies needed" 满足
+            opts["cookiefile"] = bootstrap_cookies_path
         else:
-            # 方案 B：注入 fake ttwid + odin_tt + passport_csrf_token 兜底
-            # 抖音 anti-bot 比 B站凶得多，假 cookie 只是让"看起来像浏览器过"，
-            # 通过率约 30-50%。完全可靠要 DOUYIN_COOKIES_FILE。
+            # bootstrap 失败时的最次兜底（已知 extractor 多半不读这条）
             opts["http_headers"]["Cookie"] = (
                 f"ttwid={_make_ttwid()}; "
                 f"passport_csrf_token={uuid.uuid4().hex}; "
@@ -281,6 +347,10 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
 
     入口先调 _extract_url 把粘贴文案里的真 URL 摘出来——抖音/B站 的"复制
     分享"按钮会带一长串文案，直接给 yt-dlp 会被 generic extractor 拒掉。
+
+    然后再访问平台首页 bootstrap anonymous anti-bot cookies（ttwid/buvid3/...），
+    传给 yt-dlp 的 cookiefile——extractor 报 "Fresh cookies needed" 时它就是
+    在抱怨 cookiejar 是空的，单塞 HTTP header 不管用。
     """
     import yt_dlp  # heavy import, do it lazily
 
@@ -290,6 +360,16 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outtmpl = str(out_dir / "%(id)s.%(ext)s")
+
+    # Bootstrap anonymous cookies once per request；用户配了 *_COOKIES_FILE 就跳过
+    bootstrap_cookies_path: str | None = None
+    is_bili = "bilibili.com" in url or "b23.tv" in url
+    is_douyin = "douyin.com" in url or "iesdouyin.com" in url
+    has_user_bili = bool(config.BILIBILI_COOKIES_FILE and config.BILIBILI_COOKIES_FILE.exists())
+    has_user_douyin = bool(config.DOUYIN_COOKIES_FILE and config.DOUYIN_COOKIES_FILE.exists())
+    needs_bootstrap = (is_bili and not has_user_bili) or (is_douyin and not has_user_douyin)
+    if needs_bootstrap:
+        bootstrap_cookies_path = await asyncio.to_thread(_bootstrap_session_cookies, url)
 
     def _do() -> str:
         def _attempt(extra_cookie: str | None = None) -> str:
@@ -301,8 +381,8 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
                 "noprogress": True,
                 "max_filesize": config.MAX_UPLOAD_BYTES,
             }
-            platform_patch = _get_platform_opts(url)
-            # 二次/三次重试时换一个新的 buvid3 注进 Cookie header
+            platform_patch = _get_platform_opts(url, bootstrap_cookies_path)
+            # 二次/三次重试时换一个新的 buvid3 注进 Cookie header（作为 cookiefile 之外的额外提示）
             if extra_cookie:
                 platform_patch.setdefault("http_headers", {})["Cookie"] = extra_cookie
             opts = {**base_opts, **platform_patch}
@@ -350,7 +430,14 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
         assert last_err is not None
         raise last_err
 
-    fp_str = await asyncio.to_thread(_do)
+    try:
+        fp_str = await asyncio.to_thread(_do)
+    finally:
+        if bootstrap_cookies_path:
+            try:
+                os.unlink(bootstrap_cookies_path)
+            except OSError:
+                pass
     fp = Path(fp_str)
     if not fp.exists():
         raise RuntimeError(f"download finished but file missing: {fp}")
