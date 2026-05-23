@@ -401,7 +401,10 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
         def _attempt(extra_cookie: str | None = None) -> str:
             base_opts: dict[str, Any] = {
                 "outtmpl": outtmpl,
-                "format": "best[ext=mp4]/best",
+                # 三级回落：单 mp4 文件（最小，无需合并）→ adaptive 视频+音频 ffmpeg 合并 → yt-dlp 默认 best
+                # B站只提供分离的 video/audio adaptive 流，没单 mp4，必须走第二级
+                "format": "best[ext=mp4][acodec!=none]/bv*+ba/best",
+                "merge_output_format": "mp4",
                 "quiet": True,
                 "no_warnings": True,
                 "noprogress": True,
