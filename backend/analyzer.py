@@ -5,6 +5,7 @@ import asyncio
 import json
 import logging
 import random
+import re
 import time
 import uuid
 from pathlib import Path
@@ -149,6 +150,35 @@ async def _generate_with_fallback(
     return await asyncio.to_thread(_call, fallback)
 
 
+# URL 末尾常见的中英文句末标点，提取时一并剥掉。
+# 不包含 / ? = & 这类 URL 合法字符。
+_URL_TRAILING_PUNCT = ".,;:!?。，；：！？)）】〕」』"
+
+
+def _extract_url(text: str) -> str:
+    """从用户粘贴的文本里提取第一个 http(s):// 开头的 URL。
+
+    设计目的：抖音/B站 App 的"复制分享"按钮生成的是带文案的整段字符串，例如
+        '0.23 复制打开抖音，看看【XX的作品】... https://v.douyin.com/abc/ s@r.eO 05/20'
+    yt-dlp 收到这种字符串会被 generic extractor 直接拒：
+        'X is not a valid URL'
+    错误发生在 HTTP 请求之前，412 重试 / fake buvid3 完全没机会跑。
+    本函数在 yt_dlp_download 入口先把真正的 URL 摘出来。
+
+    规则：
+    - 用 re.search(r"https?://\\S+") 抓第一个 URL token（非空白即 URL 内容）
+    - 末尾剥掉常见句末标点
+    - 找不到时抛 ValueError，由调用方决定怎么报错
+    """
+    text = (text or "").strip()
+    if not text:
+        raise ValueError("输入为空")
+    m = re.search(r"https?://\S+", text)
+    if not m:
+        raise ValueError(f"输入中没有 http/https 链接: {text[:80]}")
+    return m.group(0).rstrip(_URL_TRAILING_PUNCT)
+
+
 def _make_buvid3() -> str:
     """生成一枚伪造的 B站 buvid3 cookie 值。
     格式：XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXXinfoc（全大写十六进制）。
@@ -201,8 +231,15 @@ def _get_platform_opts(url: str) -> dict:
 async def yt_dlp_download(url: str, out_dir: Path) -> Path:
     """Best-effort download via yt-dlp.
     遇到 B站 412 时换新 buvid3 最多重试 3 次；其他平台错误立即抛出。
+
+    入口先调 _extract_url 把粘贴文案里的真 URL 摘出来——抖音/B站 的"复制
+    分享"按钮会带一长串文案，直接给 yt-dlp 会被 generic extractor 拒掉。
     """
     import yt_dlp  # heavy import, do it lazily
+
+    # 先把真 URL 摘出来（_extract_url 会抛 ValueError 如果连 URL 都没有）
+    url = _extract_url(url)
+    logger.info("[yt-dlp] extracted url: %s", url)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     outtmpl = str(out_dir / "%(id)s.%(ext)s")
