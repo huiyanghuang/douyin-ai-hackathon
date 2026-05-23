@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>科普解构器 · 让视频变成你的私人课程</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <meta name="description" content="抖音黑客松 · 把科普视频自动解构为概念图谱、知识卡片、AI 追问与游戏化测验。" />
+
+  <!-- A5 主题 FOUC 防护：必须在任何样式表加载前设 data-theme -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("a5_theme");
+        if (!t) t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#1a1d29',
+            inkSoft: '#222636',
+            inkLine: '#2d3146',
+            brand: '#6366f1',
+            brandSoft: '#818cf8',
+            brandDeep: '#4f46e5',
+          },
+          boxShadow: {
+            card: '0 4px 24px rgba(0,0,0,0.25)',
+          },
+          borderRadius: {
+            xl2: '12px',
+          },
+        },
+      },
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- 主样式 -->
+  <link rel="stylesheet" href="styles.css?v=20260523h" />
+
+  <!-- A1-A6 模块样式（顺序：a1 → a6，A5/A6 必须在主样式之后） -->
+  <link rel="stylesheet" href="modules/a1.css" />
+  <link rel="stylesheet" href="modules/a2.css" />
+  <link rel="stylesheet" href="modules/a3.css" />
+  <link rel="stylesheet" href="modules/a4.css" />
+  <link rel="stylesheet" href="modules/a5.css" />
+  <link rel="stylesheet" href="modules/a6.css" />
+</head>
+<body class="bg-ink text-white antialiased min-h-screen">
+
+  <!-- A5 · 主题切换按钮（左上角浮动） -->
+  <button id="a5-toggle" class="a5-toggle" type="button" aria-label="切换浅色/深色模式" title="切换主题">
+    <span class="a5-icon a5-icon-sun">☀</span>
+    <span class="a5-icon a5-icon-moon">☾</span>
+  </button>
+
+  <!-- ============== 顶部用户区 ============== -->
+  <div id="user-bar" class="fixed top-3 right-4 z-30 text-sm">
+    <!-- 由 JS 渲染：登录前两个按钮，登录后用户名 + 下拉 -->
+  </div>
+
+  <!-- ============== Auth Modal（登录/注册） ============== -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="auth-card relative">
+      <button class="auth-close" id="auth-close" aria-label="关闭">×</button>
+      <h2 id="auth-title" class="text-2xl font-bold mb-1">登录</h2>
+      <p id="auth-subtitle" class="text-sm text-white/50 mb-6">用账号同步你的视频解析历史</p>
+
+      <form id="auth-form" class="flex flex-col gap-3" autocomplete="off">
+        <label class="auth-field">
+          <span>用户名</span>
+          <input id="auth-username" type="text" required minlength="2" maxlength="32" autocomplete="off" />
+        </label>
+        <label class="auth-field">
+          <span>密码</span>
+          <input id="auth-password" type="password" required minlength="6" maxlength="128" autocomplete="new-password" />
+        </label>
+        <label class="auth-field" id="auth-confirm-field" hidden>
+          <span>再输一遍密码</span>
+          <input id="auth-confirm" type="password" minlength="6" maxlength="128" autocomplete="new-password" />
+        </label>
+
+        <div id="auth-error" class="hidden text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded px-3 py-2"></div>
+
+        <button id="auth-submit" type="submit" class="auth-submit">登录</button>
+      </form>
+
+      <div class="text-center text-xs text-white/40 mt-4">
+        <span id="auth-switch-hint">没有账号？</span>
+        <button id="auth-switch" class="text-brandSoft hover:underline">注册一个</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============== HERO ============== -->
+  <header id="hero-header" class="max-w-6xl mx-auto px-6 pt-16 pb-10 text-center">
+    <h1 class="text-5xl md:text-6xl font-bold tracking-tight">
+      科普解构器
+      <span class="block text-brandSoft text-2xl md:text-3xl font-medium mt-3">
+        让视频变成你的私人课程
+      </span>
+    </h1>
+    <p class="mt-6 text-white/60 max-w-2xl mx-auto leading-relaxed">
+      上传一段科普视频，AI 会替你提炼概念、绘制图谱、出题考你、随时追问。
+      把碎片化的"看过"，变成可学、可判、可用的"学会"。
+    </p>
+  </header>
+
+  <!-- ============== 区域一：输入区 ============== -->
+  <section id="input-section" class="max-w-4xl mx-auto px-6 pb-16">
+    <!-- 拖拽上传 -->
+    <div
+      id="dropzone"
+      class="relative bg-inkSoft border-2 border-dashed border-inkLine rounded-xl2 p-12 text-center cursor-pointer transition hover:border-brand"
+    >
+      <input id="file-input" type="file" accept="video/mp4,video/*" class="hidden" />
+      <div class="flex flex-col items-center gap-3">
+        <div class="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8 text-brand">
+            <path d="M12 5v14m0-14l-5 5m5-5l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="text-lg font-medium">拖拽视频到此处，或点击选择文件</div>
+        <div class="text-sm text-white/40">支持 MP4 等常见格式</div>
+      </div>
+      <!-- 上传进度条 -->
+      <div id="upload-progress" class="hidden absolute inset-x-6 bottom-4">
+        <div class="h-2 bg-inkLine rounded-full overflow-hidden">
+          <div id="upload-bar" class="h-full bg-brand transition-all" style="width: 0%"></div>
+        </div>
+        <div class="text-xs text-white/60 mt-1" id="upload-pct">0%</div>
+      </div>
+    </div>
+
+    <!-- URL 输入 -->
+    <div class="mt-6 flex gap-3">
+      <input
+        id="url-input"
+        type="text"
+        placeholder="或粘贴抖音/B站视频链接…"
+        class="flex-1 bg-inkSoft border border-inkLine rounded-xl2 px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand transition"
+      />
+      <button
+        id="url-submit"
+        class="bg-brand hover:bg-brandDeep px-6 py-3 rounded-xl2 font-medium transition"
+      >
+        解析链接
+      </button>
+    </div>
+
+    <!-- 我的历史记录（localStorage） -->
+    <div class="mt-10">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm text-white/40">我的历史记录</div>
+        <button id="history-clear" class="hidden text-xs text-white/30 hover:text-white/60 transition">清空</button>
+      </div>
+      <div id="demo-list" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- 由 JS 渲染：有记录就显示历史卡片，没记录显示空状态 -->
+      </div>
+    </div>
+  </section>
+
+  <!-- ============== 区域二：分析进度全屏遮罩 ============== -->
+  <div id="progress-overlay" class="hidden fixed inset-0 bg-ink/95 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity">
+    <div class="text-center max-w-md px-6">
+      <!-- 阶段图标 -->
+      <div id="stage-icons" class="flex items-center justify-center gap-4 mb-8">
+        <div class="stage-icon" data-stage="uploading">
+          <div class="dot"></div>
+          <div class="label">上传</div>
+        </div>
+        <div class="stage-line"></div>
+        <div class="stage-icon" data-stage="analyzing">
+          <div class="dot"></div>
+          <div class="label">理解</div>
+        </div>
+        <div class="stage-line"></div>
+        <div class="stage-icon" data-stage="structuring">
+          <div class="dot"></div>
+          <div class="label">构建</div>
+        </div>
+        <div class="stage-line"></div>
+        <div class="stage-icon" data-stage="done">
+          <div class="dot"></div>
+          <div class="label">完成</div>
+        </div>
+      </div>
+      <div id="progress-message" class="text-xl font-medium mb-6">正在唤醒 AI…</div>
+      <div class="h-2 bg-inkLine rounded-full overflow-hidden mb-3">
+        <div id="progress-bar" class="h-full bg-brand transition-all duration-500" style="width: 0%"></div>
+      </div>
+      <div id="progress-pct" class="text-sm text-white/40">0%</div>
+    </div>
+  </div>
+
+  <!-- ============== 区域三：结果展示 ============== -->
+  <section id="result-section" class="hidden max-w-screen-2xl mx-auto px-6 pt-10 pb-24">
+    <div class="flex gap-6">
+      <!-- 左侧：纵向 Tab 导航 + 返回 -->
+      <aside class="w-44 shrink-0 self-start sticky top-6">
+        <nav class="tab-nav-vertical bg-inkSoft rounded-xl2 p-2 flex flex-col gap-1">
+          <button class="tab-btn active" data-tab="cards">知识卡片</button>
+          <button class="tab-btn" data-tab="graph">概念图谱</button>
+          <button class="tab-btn" data-tab="chat">AI 追问</button>
+          <button class="tab-btn" data-tab="quiz">知识测验</button>
+        </nav>
+        <button id="export-md" class="mt-3 w-full text-sm py-2.5 px-3 rounded-xl2 transition text-left flex items-center gap-2"
+                style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); color: #c7d2fe;">
+          <span style="font-family: ui-monospace,monospace; font-size:12px">↓</span>
+          <span>导出笔记 .md</span>
+        </button>
+        <button id="back-btn" class="mt-2 w-full text-white/40 hover:text-white text-sm py-2 rounded-xl2 hover:bg-inkSoft transition text-left px-3">
+          ← 返回首页
+        </button>
+      </aside>
+
+      <!-- 右侧：Tab 内容区 -->
+      <div class="flex-1 min-w-0">
+
+    <!-- Tab 1: 知识卡片 -->
+    <div id="tab-cards" class="tab-panel">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="lg:col-span-2 space-y-6">
+          <div class="bg-inkSoft rounded-xl2 p-6">
+            <h2 id="result-title" class="text-2xl font-bold mb-3"></h2>
+            <blockquote id="result-summary" class="text-lg text-white/80 border-l-4 border-brand pl-4 leading-relaxed"></blockquote>
+          </div>
+          <div>
+            <div class="text-sm text-white/40 mb-3">核心概念</div>
+            <div id="concept-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+          </div>
+        </div>
+        <aside class="bg-inkSoft rounded-xl2 p-6 h-fit lg:sticky lg:top-6">
+          <div class="text-sm text-white/40 mb-3">关键时间点</div>
+          <div id="key-points-list" class="space-y-3"></div>
+        </aside>
+      </div>
+    </div>
+
+    <!-- Tab 2: 概念图谱 -->
+    <div id="tab-graph" class="tab-panel hidden">
+      <div class="integrated-view flex gap-3 items-stretch" style="height: 660px">
+
+        <!-- ============ 左栏：筛选 / 统计 ============ -->
+        <aside class="w-44 shrink-0 bg-inkSoft rounded-xl2 p-3 overflow-y-auto flex flex-col gap-4">
+          <div>
+            <div class="panel-section-title">概念层级</div>
+            <div id="filter-levels" class="space-y-1 mt-2"></div>
+          </div>
+          <div>
+            <div class="panel-section-title">关系类型</div>
+            <div id="filter-relations" class="space-y-1 mt-2"></div>
+          </div>
+          <div class="mt-auto pt-2 border-t border-inkLine text-[11px] text-white/40" id="graph-stats">
+            节点 0 · 连线 0
+          </div>
+        </aside>
+
+        <!-- ============ 中央：主图谱 ============ -->
+        <div class="flex-1 bg-inkSoft rounded-xl2 p-3 relative overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between mb-2 px-1 text-xs text-white/40">
+            <span>拖动节点 · 悬停查看说明 · 滚轮缩放</span>
+            <div class="flex gap-1">
+              <button class="layout-btn active" data-layout="force">力布局</button>
+              <button class="layout-btn" data-layout="radial">径向 mindmap</button>
+            </div>
+          </div>
+          <div class="relative flex-1">
+            <svg id="graph-svg" class="w-full h-full"></svg>
+
+            <!-- 左上：控制面板 -->
+            <div id="graph-controls" class="absolute top-2 left-2 flex flex-col gap-2 z-10">
+              <button id="graph-play" class="graph-ctrl-btn graph-ctrl-primary" type="button">
+                <span class="graph-ctrl-icon">▶</span>
+                <span class="graph-ctrl-label">讲解</span>
+              </button>
+              <button id="graph-reset" class="graph-ctrl-btn graph-ctrl-sm" type="button" title="重置布局">
+                ↺ 重置
+              </button>
+            </div>
+
+            <!-- 右上：关系图例 -->
+            <div id="graph-legend" class="absolute top-2 right-2 z-10"></div>
+
+            <!-- 底部讲解栏 -->
+            <div id="graph-tour-bar" class="hidden absolute left-0 right-0 bottom-0 px-4 py-3 bg-ink/90 border-t border-inkLine text-sm"></div>
+
+            <div id="graph-tooltip" class="hidden absolute bg-ink border border-inkLine rounded-xl2 p-3 max-w-xs text-sm shadow-card pointer-events-none z-20"></div>
+          </div>
+        </div>
+
+
+      </div>
+    </div>
+
+    <!-- Tab 3: AI 追问 -->
+    <div id="tab-chat" class="tab-panel hidden">
+      <div class="bg-inkSoft rounded-xl2 flex flex-col" style="height: 600px">
+        <div id="chat-suggestions" class="p-4 border-b border-inkLine flex flex-wrap gap-2"></div>
+        <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+        <div class="p-4 border-t border-inkLine flex gap-2">
+          <input
+            id="chat-input"
+            type="text"
+            placeholder="问点什么…"
+            class="flex-1 bg-ink border border-inkLine rounded-xl2 px-4 py-3 focus:outline-none focus:border-brand transition"
+          />
+          <button id="chat-send" class="bg-brand hover:bg-brandDeep px-6 py-3 rounded-xl2 font-medium transition">
+            发送
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: 知识测验 -->
+    <div id="tab-quiz" class="tab-panel hidden">
+      <div class="max-w-2xl mx-auto">
+        <div id="quiz-card" class="bg-inkSoft rounded-xl2 p-8"></div>
+      </div>
+    </div>
+
+      </div><!-- /center pane -->
+
+      <!-- 右侧：「猜你想看」固定边栏，所有 Tab 共用 -->
+      <aside class="w-64 shrink-0 self-start sticky top-6 recommend-panel">
+        <div class="recommend-panel-card">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="recommend-spark">✨</span>
+            <h3 class="text-base font-semibold">猜你想看</h3>
+          </div>
+          <p id="recommend-subtitle" class="text-xs text-white/45 mb-3 leading-relaxed">
+            AI 帮你想下一个该看的方向
+          </p>
+          <div id="recommend-body" class="recommend-body"></div>
+          <div id="recommend-footer" class="text-[10px] text-white/30 mt-3 text-center">
+            关键词由 Gemini 提炼
+          </div>
+        </div>
+      </aside>
+
+    </div><!-- /flex -->
+  </section>
+
+  <!-- ===================== A1-A4 模块挂载点（自附着 DOM） ===================== -->
+
+  <!-- A1 · 四 Tab 联动：浮动提示 chip -->
+  <div id="a1-chip" class="a1-chip hidden" role="status" aria-live="polite">
+    <span class="a1-chip-icon">↪</span>
+    <span class="a1-chip-text">已选中：<b id="a1-chip-name"></b><span class="a1-chip-hint"> · 在卡片中查看</span></span>
+    <button id="a1-chip-go" class="a1-chip-go" type="button" aria-label="跳转到知识卡片">→</button>
+    <button id="a1-chip-close" class="a1-chip-close" type="button" aria-label="关闭">×</button>
+  </div>
+
+  <!-- A2 · 生成完成庆祝动画 overlay -->
+  <div id="a2-celebrate" class="a2-celebrate hidden" aria-hidden="true">
+    <div class="a2-shine"></div>
+    <div class="a2-content">
+      <div class="a2-icon">✦</div>
+      <div class="a2-title">你的私人课程已就绪</div>
+      <div class="a2-stats" id="a2-stats"></div>
+    </div>
+  </div>
+
+  <!-- A3 · 学习成就卡：隐藏模板（视口外，仅供 html2canvas 抓图） -->
+  <div id="a3-card-template" class="a3-card-template" aria-hidden="true">
+    <div class="a3-card">
+      <div class="a3-brand">
+        <span class="a3-logo">SCI</span>
+        <span class="a3-tag">科普解构器 · 学习成就</span>
+      </div>
+      <div class="a3-video-title" id="a3-video-title">视频标题</div>
+      <div class="a3-score-row">
+        <div class="a3-score" id="a3-score">0/0</div>
+        <div class="a3-score-label" id="a3-score-label">完成</div>
+      </div>
+      <div class="a3-concepts-title">我学会了</div>
+      <ul class="a3-concepts" id="a3-concepts"></ul>
+      <div class="a3-footer">
+        douyinhackathon.xinguangtreehole.com · 抖音黑客松 2025
+      </div>
+    </div>
+  </div>
+
+  <!-- A4 · 视频缩略图 + 智能进度文案（JS 启动后会自动 reparent 到 progress-overlay 内部） -->
+  <div id="a4-overlay-inject" class="a4-overlay-inject hidden" aria-hidden="true">
+    <div class="a4-thumb-wrap">
+      <canvas id="a4-thumb-canvas" width="220" height="124"></canvas>
+      <div class="a4-thumb-time" id="a4-thumb-time">00:00</div>
+    </div>
+    <div class="a4-flavor" id="a4-flavor"></div>
+  </div>
+
+  <!-- 主脚本（原版未改） -->
+  <script src="app.js?v=20260523h" charset="utf-8"></script>
+
+  <!-- A1-A6 模块脚本（A6 纯 CSS 无 JS） -->
+  <script src="modules/a1.js"></script>
+  <script src="modules/a2.js"></script>
+  <script src="modules/a3.js"></script>
+  <script src="modules/a4.js"></script>
+  <script src="modules/a5.js"></script>
+</body>
+</html>

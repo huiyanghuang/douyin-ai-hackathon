@@ -1,0 +1,136 @@
+/* ============================================================
+ * A6 · Glassmorphism 毛玻璃质感
+ * 命名空间：（无新 DOM，纯样式覆盖）
+ *
+ * 加载顺序：main styles.css → a5.css → a6.css
+ * ============================================================ */
+
+/* ---------- Auth Modal ---------- */
+.auth-card {
+  background: linear-gradient(180deg, rgba(31, 34, 49, 0.78) 0%, rgba(24, 27, 39, 0.82) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(129, 140, 248, 0.22) !important;
+}
+:root[data-theme="light"] .auth-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.78) 0%, rgba(246, 247, 251, 0.82) 100%) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+  box-shadow:
+    0 24px 64px rgba(99, 102, 241, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 0 1px rgba(99, 102, 241, 0.18) !important;
+}
+#auth-modal {
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+}
+
+/* ---------- Progress Overlay ---------- */
+#progress-overlay {
+  background: rgba(26, 29, 41, 0.55) !important;
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+:root[data-theme="light"] #progress-overlay {
+  background: rgba(246, 247, 251, 0.55) !important;
+}
+
+/* ---------- 推荐边栏 ---------- */
+.recommend-panel-card {
+  background: linear-gradient(180deg, rgba(31, 34, 49, 0.62), rgba(24, 27, 39, 0.7)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(168, 85, 247, 0.18) !important;
+}
+:root[data-theme="light"] .recommend-panel-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 247, 251, 0.78)) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+  box-shadow:
+    0 8px 32px rgba(99, 102, 241, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 0 1px rgba(168, 85, 247, 0.15) !important;
+}
+
+/* ---------- Tab 纵向导航 ---------- */
+.tab-nav-vertical {
+  background: rgba(34, 38, 54, 0.55) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+:root[data-theme="light"] .tab-nav-vertical {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ---------- Dropzone ---------- */
+#dropzone {
+  background: rgba(34, 38, 54, 0.45) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+:root[data-theme="light"] #dropzone {
+  background: rgba(255, 255, 255, 0.78) !important;
+}
+
+/* ---------- 用户按钮 ---------- */
+.user-btn {
+  backdrop-filter: blur(14px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+}
+
+/* ---------- 图谱控制按钮 + 图例 ---------- */
+.graph-ctrl-btn,
+.graph-legend-panel {
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+}
+
+/* ---------- 概念卡片 ---------- */
+.concept-card {
+  background: rgba(34, 38, 54, 0.62) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.concept-card:hover {
+  background: rgba(99, 102, 241, 0.14) !important;
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+:root[data-theme="light"] .concept-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(0, 0, 0, 0.05) !important;
+}
+:root[data-theme="light"] .concept-card:hover {
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* ---------- 整合视图 aside 已有 backdrop-filter，加 saturate ---------- */
+.integrated-view aside {
+  backdrop-filter: blur(14px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(150%) !important;
+}
+:root[data-theme="light"] .integrated-view aside {
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+/* ---------- Toast 提示 ---------- */
+.toast {
+  background: rgba(45, 49, 70, 0.78) !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+:root[data-theme="light"] .toast {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}

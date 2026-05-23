@@ -1,0 +1,90 @@
+/* ============================================================
+ * A1 · 四 Tab 联动模块
+ * 命名空间：.a1-*  /  #a1-*
+ * ============================================================ */
+
+.a1-chip {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translate(-50%, 24px);
+  opacity: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.95));
+  border: 1px solid rgba(129, 140, 248, 0.6);
+  border-radius: 999px;
+  padding: 10px 12px 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #fff;
+  box-shadow:
+    0 12px 36px rgba(99, 102, 241, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  z-index: 90;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  pointer-events: none;
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+}
+.a1-chip.hidden { display: none !important; }
+.a1-chip.is-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.a1-chip-icon {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.a1-chip-text b {
+  font-weight: 700;
+  padding: 0 2px;
+  color: #fde68a;
+}
+.a1-chip-hint {
+  opacity: 0.75;
+}
+.a1-chip-go {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition: background 0.15s, transform 0.15s;
+  padding: 0;
+}
+.a1-chip-go:hover {
+  background: rgba(255, 255, 255, 0.32);
+  transform: translateX(2px);
+}
+.a1-chip-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  line-height: 1;
+}
+.a1-chip-close:hover {
+  color: #fff;
+}
+
+/* 关键时间点联动高亮 —— 复用现有 .kp-item 结构 */
+.kp-item.a1-active {
+  background: rgba(99, 102, 241, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin: -2px -10px;
+  animation: a1-kp-pulse 1.6s ease-out;
+}
+@keyframes a1-kp-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.55); }
+  40%  { box-shadow: 0 0 0 14px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
