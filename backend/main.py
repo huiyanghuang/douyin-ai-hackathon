@@ -25,12 +25,15 @@ from sse_starlette.sse import EventSourceResponse
 from . import auth, config
 from .analyzer import analyze_video, yt_dlp_download
 from .chat_service import chat_reply
+from .recommend import recommend_for_analysis
 from .schemas import (
     AnalyzeAccepted,
     AuthResponse,
     ChatRequest,
     ChatResponse,
     LoginRequest,
+    RecommendRequest,
+    RecommendResponse,
     RegisterRequest,
     UserInfo,
 )
@@ -254,6 +257,26 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
     reply = await chat_reply(analysis, req.history, req.message)
     return ChatResponse(reply=reply)
+
+
+@app.post("/api/recommend", response_model=RecommendResponse)
+async def recommend(req: RecommendRequest) -> RecommendResponse:
+    """根据视频解构结果，AI 抽延伸关键词 + 构造 B站/抖音搜索链接。"""
+    analysis: dict | None = None
+    if req.task_id:
+        snap = await store.get(req.task_id)
+        if snap and snap.get("result"):
+            analysis = snap["result"]
+        else:
+            demo = _find_demo(req.task_id)
+            if demo:
+                analysis = demo["cached_result"]
+    if analysis is None and req.analysis is not None:
+        analysis = req.analysis
+    if analysis is None:
+        raise HTTPException(404, "task 还没分析完成或不存在")
+    data = await recommend_for_analysis(analysis)
+    return RecommendResponse(**data)
 
 
 _demos_cache: list[dict] | None = None

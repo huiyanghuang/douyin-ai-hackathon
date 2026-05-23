@@ -120,3 +120,36 @@ class UserInfo(BaseModel):
 class AuthResponse(BaseModel):
     token: str
     user: UserInfo
+
+
+# ---------- 猜你想看 ----------
+class RecommendRequest(BaseModel):
+    task_id: str | None = None
+    # 历史还原项 task_id 已经过 TTL → 前端把分析结果带过来兜底
+    analysis: dict[str, Any] | None = None
+
+
+class BilibiliVideo(BaseModel):
+    title: str
+    url: str
+    bvid: str | None = None
+    cover: str | None = None
+    author: str | None = None
+    view: int = 0
+    duration: str | None = None
+    description: str | None = None
+    score: int | None = None     # Gemini 评分 0-100
+    reason: str | None = None    # Gemini 评分理由
+
+
+class RecommendItem(BaseModel):
+    keyword: str
+    bilibili_video: BilibiliVideo | None = None  # 评分达阈值才有
+    bilibili_search_url: str                       # 始终有，作为兜底跳转
+    douyin_url: str | None = None                  # Gemini 判断"适合抖音搜"才有
+
+
+class RecommendResponse(BaseModel):
+    keywords: list[str]
+    items: list[RecommendItem]
+    source: str  # "gemini" / "local"
