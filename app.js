@@ -105,6 +105,10 @@ const state = {
     wrong: [],
   },
   selectedConcept: null,
+  // 按 task_id 记录的来源信息，分析完成时取走（修 jinziyao 原版单例覆盖的 race）
+  pendingSources: new Map(),
+  // 当前 state.result 是不是从 localStorage 历史还原的（true 时聊天要把 analysis 一起发给后端）
+  fromHistory: false,
 };
 
 /* ---------- DOM 引用 ---------- */
@@ -119,10 +123,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bindTabs();
   bindChat();
   bindBack();
-  loadDemos();
-  // 骨架阶段：直接用 mock 渲染一次，方便看样式
-  // 真实流程下,这一行可以注释掉
-  // renderResult(window.__MOCK__);
+  bindHistoryClear();
+  renderHistory();
 });
 
 /* ============================================================
@@ -166,6 +168,7 @@ function bindBack() {
     $("#hero-header")?.classList.remove("hidden");
     state.taskId = null;
     state.result = null;
+    state.fromHistory = false;
   });
   $("#export-md")?.addEventListener("click", exportMarkdown);
 }
@@ -251,44 +254,137 @@ function buildMarkdown(d) {
 }
 
 /* ============================================================
- * 预置 demo
+ * 我的历史记录（localStorage，最多 HISTORY_MAX 条）
  * ============================================================ */
-async function loadDemos() {
-  const list = $("#demo-list");
-  let demos = [];
+const HISTORY_KEY = "dyhk_history_v1";
+const HISTORY_MAX = 20;
+
+function loadHistory() {
   try {
-    const res = await fetch("/api/demos");
-    if (res.ok) demos = await res.json();
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
   } catch (e) {
-    // 后端不可用时用 mock
+    console.warn("history corrupted, reset", e);
+    return [];
   }
-  if (!demos.length) {
-    demos = [
-      { id: "mock-1", title: "黑洞为什么不会发光", thumb: "", cached_result: window.__MOCK__ },
-      { id: "mock-2", title: "为什么天空是蓝的", thumb: "", cached_result: window.__MOCK__ },
-      { id: "mock-3", title: "DNA 双螺旋的秘密", thumb: "", cached_result: window.__MOCK__ },
-      { id: "mock-4", title: "相对论入门 10 分钟", thumb: "", cached_result: window.__MOCK__ },
-    ];
+}
+
+function writeHistory(arr) {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+  } catch (e) {
+    console.warn("history write failed", e);
   }
-  list.innerHTML = demos
+}
+
+function saveHistoryItem(item) {
+  const arr = loadHistory().filter((x) => x.id !== item.id);
+  arr.unshift(item);
+  while (arr.length > HISTORY_MAX) arr.pop();
+  writeHistory(arr);
+}
+
+function deleteHistoryItem(id) {
+  writeHistory(loadHistory().filter((x) => x.id !== id));
+}
+
+function clearHistory() {
+  writeHistory([]);
+}
+
+/* 真实分析完成时调（listenProgress / fetchResult），点击历史卡时不要调。 */
+function saveCurrentAnalysis(data, taskId) {
+  if (!data) return;
+  const src = state.pendingSources.get(taskId) || null;
+  const item = {
+    id: taskId || `local-${Date.now()}`,
+    title: data.title || (src?.value ?? "未命名视频"),
+    source_type: src?.type || "unknown",
+    source_value: src?.value || "",
+    savedAt: Date.now(),
+    result: data,
+  };
+  saveHistoryItem(item);
+  renderHistory();
+  if (taskId) state.pendingSources.delete(taskId);
+}
+
+function formatRelativeTime(ts) {
+  const diff = Math.max(0, Date.now() - ts);
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "刚刚";
+  if (min < 60) return `${min} 分钟前`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} 小时前`;
+  const day = Math.floor(hr / 24);
+  if (day < 30) return `${day} 天前`;
+  return new Date(ts).toLocaleDateString("zh-CN");
+}
+
+function renderHistory() {
+  const list = $("#demo-list");
+  if (!list) return;
+  const clearBtn = $("#history-clear");
+  const items = loadHistory();
+
+  if (!items.length) {
+    clearBtn?.classList.add("hidden");
+    list.innerHTML = `
+      <div class="col-span-full text-center py-10 text-white/30 text-sm">
+        <div class="text-3xl mb-2">📭</div>
+        <div>你还没有解析过视频</div>
+        <div class="text-xs mt-1 text-white/20">上传一个 mp4 试试吧</div>
+      </div>`;
+    return;
+  }
+
+  clearBtn?.classList.remove("hidden");
+  list.innerHTML = items
     .map(
-      (d, i) => `
-      <div class="demo-card" data-idx="${i}">
-        <div class="demo-thumb flex items-center justify-center text-2xl">
-          ${d.thumb ? `<img src="${d.thumb}" class="demo-thumb" alt="" />` : "🎬"}
-        </div>
-        <div class="demo-title">${escapeHtml(d.title)}</div>
+      (it, i) => `
+      <div class="demo-card relative group" data-idx="${i}">
+        <button class="history-del absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 text-white/60 opacity-0 group-hover:opacity-100 transition text-xs"
+                data-id="${escapeHtml(it.id)}" title="删除这条记录">×</button>
+        <div class="demo-thumb flex items-center justify-center text-2xl">🎬</div>
+        <div class="demo-title">${escapeHtml(it.title)}</div>
+        <div class="text-xs text-white/30 mt-1">${formatRelativeTime(it.savedAt)}</div>
       </div>`
     )
     .join("");
+
+  // 卡片点击：还原结果面板（标记 fromHistory，让聊天能把 analysis 带给后端）
   list.querySelectorAll(".demo-card").forEach((el) => {
-    el.addEventListener("click", () => {
+    el.addEventListener("click", (ev) => {
+      if (ev.target.classList.contains("history-del")) return;
       const idx = +el.dataset.idx;
-      const d = demos[idx];
-      // 预置案例：直接渲染，不走 analyze
-      state.taskId = d.id;
-      renderResult(d.cached_result);
+      const it = items[idx];
+      if (!it) return;
+      state.taskId = it.id;
+      state.fromHistory = true;
+      renderResult(it.result);
     });
+  });
+
+  // × 删除单条
+  list.querySelectorAll(".history-del").forEach((btn) => {
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const id = btn.dataset.id;
+      deleteHistoryItem(id);
+      renderHistory();
+    });
+  });
+}
+
+function bindHistoryClear() {
+  const btn = $("#history-clear");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    if (!confirm("确定清空所有历史记录？")) return;
+    clearHistory();
+    renderHistory();
   });
 }
 
@@ -296,6 +392,7 @@ async function loadDemos() {
  * 上传 & URL 提交
  * ============================================================ */
 async function handleFile(file) {
+  state.fromHistory = false;
   showProgressOverlay();
   setStage("uploading", 0, `正在上传 ${file.name}…`);
   const fd = new FormData();
@@ -306,6 +403,7 @@ async function handleFile(file) {
     });
     const { task_id } = res;
     state.taskId = task_id;
+    state.pendingSources.set(task_id, { type: "file", value: file.name });
     listenProgress(task_id);
   } catch (e) {
     // 后端不可用时用 mock 走一遍流程
@@ -314,6 +412,7 @@ async function handleFile(file) {
 }
 
 async function handleUrl(url) {
+  state.fromHistory = false;
   showProgressOverlay();
   setStage("uploading", 5, "正在解析链接…");
   try {
@@ -324,6 +423,7 @@ async function handleUrl(url) {
     });
     const { task_id } = await res.json();
     state.taskId = task_id;
+    state.pendingSources.set(task_id, { type: "url", value: url });
     listenProgress(task_id);
   } catch (e) {
     fakeAnalyze();
@@ -356,8 +456,12 @@ function listenProgress(taskId) {
       setStage(data.stage, data.percent || 0, data.message || "");
       if (data.stage === "done") {
         es.close();
-        if (data.result) renderResult(data.result);
-        else fetchResult(taskId);
+        if (data.result) {
+          renderResult(data.result);
+          saveCurrentAnalysis(data.result, taskId);
+        } else {
+          fetchResult(taskId);
+        }
       } else if (data.stage === "error") {
         es.close();
         alert("分析失败：" + (data.error || "未知错误"));
@@ -378,8 +482,16 @@ async function fetchResult(taskId) {
   try {
     const res = await fetch(`/api/result/${taskId}`);
     const data = await res.json();
-    renderResult(data);
+    // /api/result/{task_id} 返回的是 { task_id, stage, percent, message, result, error } 外壳，
+    // 真正的分析结果在 data.result 字段里。只在 data.result 存在时渲染，避免传 wrapper 导致 title/summary undefined。
+    if (data && data.result) {
+      renderResult(data.result);
+      saveCurrentAnalysis(data.result, taskId);
+    } else {
+      throw new Error("/api/result 返回了空 result");
+    }
   } catch (e) {
+    console.warn("fetchResult failed:", e);
     renderResult(window.__MOCK__);
   }
 }
@@ -1070,14 +1182,19 @@ async function sendChat() {
   const thinking = appendChat("assistant", "思考中…");
   let reply = "";
   try {
+    const body = {
+      task_id: state.taskId,
+      history: state.chatHistory.slice(0, -1),
+      message: text,
+    };
+    // 历史还原项的 task_id 在后端 in-memory store 早就 GC 了，把当前分析直接捎给后端做兜底
+    if (state.fromHistory && state.result) {
+      body.analysis = state.result;
+    }
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        task_id: state.taskId,
-        history: state.chatHistory.slice(0, -1),
-        message: text,
-      }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     reply = data.reply || "（无响应）";

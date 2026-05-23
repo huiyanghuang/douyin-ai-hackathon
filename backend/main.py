@@ -176,6 +176,9 @@ async def chat(req: ChatRequest) -> ChatResponse:
         demo = _find_demo(req.task_id)
         if demo:
             analysis = demo["cached_result"]
+    # 兜底：前端历史还原项的 task_id 已经过了内存 TTL，请求体里会带 analysis 字段
+    if analysis is None and req.analysis is not None:
+        analysis = req.analysis
     if analysis is None:
         raise HTTPException(404, "task 还没分析完成或不存在")
 
