@@ -1,0 +1,18 @@
+[Unit]
+Description=Douyin Hackathon - Popular Science Video Deconstructor (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/douyin-ai-hackathon
+Environment=GEMINI_API_KEY=AIzaSyBfL5MxLtht8NcVayzNg8AtKhORrxMeeXU
+Environment=UPLOAD_DIR=/var/lib/douyin-uploads
+ExecStart=/opt/douyin-ai-hackathon/.venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
