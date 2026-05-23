@@ -290,8 +290,22 @@ def _get_platform_opts(url: str, bootstrap_cookies_path: str | None = None) -> d
 
     # ---------- BiliBili ----------
     if "bilibili.com" in url or "b23.tv" in url:
-        opts["http_headers"]["Referer"] = "https://www.bilibili.com"
-        opts["http_headers"]["Origin"] = "https://www.bilibili.com"
+        # 光发 Referer + Origin 还不够：B站 412 也看 Accept-Language / Sec-Fetch-*
+        # 等"是不是真浏览器"信号。把全套 Chrome 桌面 headers 发齐。
+        opts["http_headers"].update({
+            "Referer": "https://www.bilibili.com/",
+            "Origin": "https://www.bilibili.com",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+        })
+        opts["socket_timeout"] = 30
+        opts["extractor_retries"] = 5
         if config.BILIBILI_COOKIES_FILE and config.BILIBILI_COOKIES_FILE.exists():
             opts["cookiefile"] = str(config.BILIBILI_COOKIES_FILE)
         elif bootstrap_cookies_path:
@@ -436,6 +450,20 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
                     )
                     time.sleep(wait)
                     continue
+                # 重试耗尽：把晦涩的 yt-dlp 错误包成清楚的中文，提示走 cookies 文件
+                if is_bilibili_block:
+                    raise RuntimeError(
+                        "B站 anti-bot 拦截（412 Precondition Failed）。"
+                        "海外机房 IP 即便发完整浏览器请求也常被拦。"
+                        "请管理员在 B站登录后导出 cookies.txt 配置 BILIBILI_COOKIES_FILE 环境变量；"
+                        "或改用文件上传。"
+                    ) from e
+                if is_douyin_block:
+                    raise RuntimeError(
+                        "抖音 anti-bot 拦截。"
+                        "请管理员在抖音登录后导出 cookies.txt 配置 DOUYIN_COOKIES_FILE 环境变量；"
+                        "或改用文件上传。"
+                    ) from e
                 raise
         assert last_err is not None
         raise last_err
