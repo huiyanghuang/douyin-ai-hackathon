@@ -20,11 +20,17 @@ def _client() -> genai.Client:
     return genai.Client(api_key=config.GEMINI_API_KEY)
 
 
+_ROLE_TO_GEMINI = {"user": "user", "assistant": "model", "model": "model"}
+
+
 def _to_gemini_contents(history: list[ChatTurn], message: str) -> list[types.Content]:
     contents: list[types.Content] = []
     for turn in history:
         contents.append(
-            types.Content(role=turn.role, parts=[types.Part.from_text(text=turn.text)])
+            types.Content(
+                role=_ROLE_TO_GEMINI[turn.role],
+                parts=[types.Part.from_text(text=turn.text)],
+            )
         )
     contents.append(types.Content(role="user", parts=[types.Part.from_text(text=message)]))
     return contents
