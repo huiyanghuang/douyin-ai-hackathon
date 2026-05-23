@@ -426,19 +426,11 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
                 )
             except yt_dlp.utils.DownloadError as e:
                 last_err = e
-                msg = str(e)
-                # B站典型 anti-bot 信号：412 Precondition Failed
-                is_bilibili_block = ("bilibili.com" in url or "b23.tv" in url) and (
-                    "412" in msg or "Precondition Failed" in msg
-                )
-                # 抖音典型 anti-bot 信号：403 Forbidden / "Unable to extract" / "Sign in"
-                is_douyin_block = ("douyin.com" in url or "iesdouyin.com" in url) and (
-                    "403" in msg
-                    or "Forbidden" in msg
-                    or "Unable to extract" in msg
-                    or "Sign in" in msg
-                    or "not a valid URL" in msg  # 偶尔 v.douyin.com 短链跳转失败
-                )
+                # 海外服务器 IP 跑 B站/抖音 anti-bot 失败信号五花八门：412 / 403 /
+                # JSON 解析失败 / Unable to extract / Sign in needed / Fresh cookies needed。
+                # 干脆：只要是这两个平台的 yt-dlp DownloadError，统一当作 anti-bot 处理。
+                is_bilibili_block = "bilibili.com" in url or "b23.tv" in url
+                is_douyin_block = "douyin.com" in url or "iesdouyin.com" in url
                 if (is_bilibili_block or is_douyin_block) and attempt < 2:
                     wait = random.uniform(1.0, 3.0)
                     platform = "B站 412" if is_bilibili_block else "抖音 anti-bot"
