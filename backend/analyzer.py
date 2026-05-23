@@ -371,6 +371,16 @@ async def yt_dlp_download(url: str, out_dir: Path) -> Path:
     if needs_bootstrap:
         bootstrap_cookies_path = await asyncio.to_thread(_bootstrap_session_cookies, url)
 
+    # 抖音特殊处理：海外机房 IP（如 Vultr）访问 douyin.com 不下发 anti-bot cookies，
+    # bootstrap 会返回 None。直接进 yt-dlp 只会得到晦涩的 "Fresh cookies needed"，
+    # 不如这里 fail-fast，给前端一条人能看懂的提示。
+    if is_douyin and not has_user_douyin and bootstrap_cookies_path is None:
+        raise RuntimeError(
+            "抖音从本服务器无法匿名访问（海外机房 IP 被 anti-bot 拦截）。"
+            "请联系管理员上传 cookies.txt 并配置 DOUYIN_COOKIES_FILE 环境变量；"
+            "或改用文件上传"
+        )
+
     def _do() -> str:
         def _attempt(extra_cookie: str | None = None) -> str:
             base_opts: dict[str, Any] = {
