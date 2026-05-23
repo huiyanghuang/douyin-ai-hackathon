@@ -31,7 +31,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260523d" />
+  <link rel="stylesheet" href="styles.css?v=20260524a" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
   <!-- ============== 顶部用户区 ============== -->
@@ -179,17 +179,13 @@
       <!-- 左侧：纵向 Tab 导航 + 返回 -->
       <aside class="w-44 shrink-0 self-start sticky top-6">
         <nav class="tab-nav-vertical bg-inkSoft rounded-xl2 p-2 flex flex-col gap-1">
-          <button class="tab-btn active" data-tab="cards">知识卡片</button>
+          <button class="tab-btn active" data-tab="summary">AI 摘要</button>
+          <button class="tab-btn" data-tab="cards">知识卡片</button>
           <button class="tab-btn" data-tab="graph">概念图谱</button>
           <button class="tab-btn" data-tab="chat">AI 追问</button>
           <button class="tab-btn" data-tab="quiz">知识测验</button>
         </nav>
-        <button id="export-md" class="mt-3 w-full text-sm py-2.5 px-3 rounded-xl2 transition text-left flex items-center gap-2"
-                style="background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.3); color: #c7d2fe;">
-          <span style="font-family: ui-monospace,monospace; font-size:12px">↓</span>
-          <span>导出笔记 .md</span>
-        </button>
-        <button id="back-btn" class="mt-2 w-full text-white/40 hover:text-white text-sm py-2 rounded-xl2 hover:bg-inkSoft transition text-left px-3">
+        <button id="back-btn" class="mt-3 w-full text-white/40 hover:text-white text-sm py-2 rounded-xl2 hover:bg-inkSoft transition text-left px-3">
           ← 返回首页
         </button>
       </aside>
@@ -198,7 +194,7 @@
       <div class="flex-1 min-w-0">
 
     <!-- Tab 1: 知识卡片 -->
-    <div id="tab-cards" class="tab-panel">
+    <div id="tab-cards" class="tab-panel hidden">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div class="lg:col-span-2 space-y-6">
           <div class="bg-inkSoft rounded-xl2 p-6">
@@ -299,6 +295,20 @@
       </div>
     </div>
 
+    <!-- Tab AI 摘要：仅总结视频内容；底部按钮下载完整笔记 .md -->
+    <div id="tab-summary" class="tab-panel">
+      <div class="max-w-4xl mx-auto bg-inkSoft rounded-xl2 p-8">
+        <div id="summary-content" class="summary-md"></div>
+        <div class="mt-10 pt-6 border-t border-inkLine flex justify-end">
+          <button id="export-md" class="px-5 py-2.5 rounded-xl2 transition flex items-center gap-2 font-medium"
+                  style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.45); color: #c7d2fe;">
+            <span style="font-family: ui-monospace,monospace;">↓</span>
+            <span>下载笔记 .md</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
       </div><!-- /center pane -->
 
       <!-- 右侧：「猜你想看」固定边栏，所有 Tab 共用 -->
@@ -321,6 +331,6 @@
     </div><!-- /flex -->
   </section>
 
-  <script src="app.js?v=20260523d" charset="utf-8"></script>
+  <script src="app.js?v=20260524a" charset="utf-8"></script>
 </body>
 </html>

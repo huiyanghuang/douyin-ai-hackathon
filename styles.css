@@ -1048,6 +1048,103 @@ body {
 }
 
 /* ============================================================
+ * AI 摘要 Tab：markdown 渲染样式（无 Tailwind Typography 时的兜底）
+ * ============================================================ */
+.summary-md {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14.5px;
+  line-height: 1.7;
+  word-wrap: break-word;
+}
+.summary-md h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+.summary-md h2 {
+  font-size: 19px;
+  font-weight: 600;
+  color: #c7d2fe;
+  margin: 28px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #2d3146;
+}
+.summary-md h2:first-child { margin-top: 0; }
+.summary-md h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #818cf8;
+  margin: 18px 0 6px;
+}
+.summary-md p {
+  margin: 0 0 10px;
+}
+.summary-md ul,
+.summary-md ol {
+  margin: 6px 0 14px;
+  padding-left: 24px;
+}
+.summary-md li {
+  margin-bottom: 4px;
+}
+.summary-md li::marker {
+  color: rgba(129, 140, 248, 0.7);
+}
+.summary-md strong {
+  color: #fff;
+  font-weight: 600;
+}
+.summary-md em {
+  color: rgba(255, 255, 255, 0.65);
+}
+.summary-md a {
+  color: #818cf8;
+  text-decoration: none;
+  border-bottom: 1px dotted rgba(129, 140, 248, 0.5);
+}
+.summary-md a:hover {
+  color: #a5b4fc;
+  border-bottom-color: #a5b4fc;
+}
+.summary-md blockquote {
+  margin: 12px 0;
+  padding: 10px 16px;
+  border-left: 3px solid #6366f1;
+  background: rgba(99, 102, 241, 0.08);
+  border-radius: 0 8px 8px 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+.summary-md blockquote p:last-child { margin-bottom: 0; }
+.summary-md code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #fde68a;
+}
+.summary-md pre {
+  background: #1a1d29;
+  border: 1px solid #2d3146;
+  border-radius: 8px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  margin: 12px 0;
+}
+.summary-md pre code {
+  background: transparent;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+.summary-md hr {
+  border: none;
+  border-top: 1px solid #2d3146;
+  margin: 24px 0;
+}
+
+/* ============================================================
  * v4 整合视图：三栏布局 + 过滤面板 + 学习清单
  * ============================================================ */
 .panel-section-title {

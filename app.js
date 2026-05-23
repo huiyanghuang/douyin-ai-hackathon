@@ -928,13 +928,13 @@ function renderResult(data) {
     state.learning.visibleLevels = new Set(["core", "branch", "leaf", "unknown"]);
     state.learning.visibleRelations = null;
 
-    // 切到结果区（淡出 overlay）
+    // 切到结果区（淡出 overlay）；AI 摘要作为五个 tab 的第一个，进结果页就先看摘要
     setTimeout(() => {
       hideProgressOverlay();
       $("#hero-header")?.classList.add("hidden");
       $("#input-section").classList.add("hidden");
       $("#result-section").classList.remove("hidden");
-      switchTab("cards");
+      switchTab("summary");
     }, 300);
 
     // Tab 1: 知识卡片
@@ -1058,8 +1058,9 @@ function bindTabs() {
 }
 function switchTab(name, opts = {}) {
   $$(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
-  ["cards", "graph", "chat", "quiz"].forEach((t) => {
+  ["cards", "graph", "chat", "quiz", "summary"].forEach((t) => {
     const panel = $(`#tab-${t}`);
+    if (!panel) return;
     const isActive = t === name;
     panel.classList.toggle("hidden", !isActive);
     if (isActive) {
@@ -1072,9 +1073,38 @@ function switchTab(name, opts = {}) {
     renderGraph(opts.highlight);
   } else if (name === "cards" && opts.highlight) {
     requestAnimationFrame(() => highlightConceptCard(opts.highlight));
+  } else if (name === "summary") {
+    renderSummary();
   }
   if (name === "quiz") attachQuizKeyboard();
   else detachQuizKeyboard();
+}
+
+/* ============================================================
+ * AI 摘要 Tab：只渲染 title + summary（视频内容概览）。
+ * 下载按钮仍然导出完整笔记，由 buildMarkdown 拼出。
+ * ============================================================ */
+function buildSummaryMarkdown(d) {
+  const L = [];
+  L.push(`# ${d.title || "未命名视频"}`, "");
+  if (d.summary) L.push(`> ${d.summary}`, "");
+  return L.join("\n");
+}
+
+function renderSummary() {
+  const el = $("#summary-content");
+  if (!el) return;
+  if (!state.result) {
+    el.innerHTML = `<div class="empty-state py-10">还没有分析结果可摘要</div>`;
+    return;
+  }
+  const md = buildSummaryMarkdown(state.result);
+  if (window.marked) {
+    // marked v5+ 默认转义 HTML，足以应对来自 Gemini 的 user-generated 文本
+    el.innerHTML = marked.parse(md);
+  } else {
+    el.innerHTML = `<pre style="white-space:pre-wrap;color:rgba(255,255,255,0.78)">${escapeHtml(md)}</pre>`;
+  }
 }
 
 /* ============================================================
