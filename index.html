@@ -31,7 +31,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260523f" />
+  <link rel="stylesheet" href="styles.css?v=20260523d" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
   <!-- ============== 顶部用户区 ============== -->
@@ -174,7 +174,7 @@
   </div>
 
   <!-- ============== 区域三：结果展示 ============== -->
-  <section id="result-section" class="hidden max-w-7xl mx-auto px-6 pt-10 pb-24">
+  <section id="result-section" class="hidden max-w-screen-2xl mx-auto px-6 pt-10 pb-24">
     <div class="flex gap-6">
       <!-- 左侧：纵向 Tab 导航 + 返回 -->
       <aside class="w-44 shrink-0 self-start sticky top-6">
@@ -269,18 +269,6 @@
           </div>
         </div>
 
-        <!-- ============ 右栏：学习进度 + 概念清单 ============ -->
-        <aside class="w-60 shrink-0 bg-inkSoft rounded-xl2 p-3 flex flex-col overflow-hidden">
-          <div class="panel-section-title">学习进度</div>
-          <div class="quiz-progress mt-2 mb-1.5"><div id="learn-progress-bar" class="quiz-progress-bar" style="width: 0%"></div></div>
-          <div class="flex items-center justify-between text-xs text-white/60 mb-3">
-            <span id="learn-progress-text">0 / 0 个</span>
-            <button id="learn-reset" class="text-[10px] text-white/40 hover:text-white">重置</button>
-          </div>
-
-          <div class="panel-section-title mb-2">概念清单</div>
-          <div id="concept-list-panel" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
-        </aside>
 
       </div>
     </div>
@@ -311,10 +299,28 @@
       </div>
     </div>
 
-      </div><!-- /right pane -->
+      </div><!-- /center pane -->
+
+      <!-- 右侧：「猜你想看」固定边栏，所有 Tab 共用 -->
+      <aside class="w-64 shrink-0 self-start sticky top-6 recommend-panel">
+        <div class="recommend-panel-card">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="recommend-spark">✨</span>
+            <h3 class="text-base font-semibold">猜你想看</h3>
+          </div>
+          <p id="recommend-subtitle" class="text-xs text-white/45 mb-3 leading-relaxed">
+            AI 帮你想下一个该看的方向
+          </p>
+          <div id="recommend-body" class="recommend-body"></div>
+          <div id="recommend-footer" class="text-[10px] text-white/30 mt-3 text-center">
+            关键词由 Gemini 提炼
+          </div>
+        </div>
+      </aside>
+
     </div><!-- /flex -->
   </section>
 
-  <script src="app.js?v=20260523f" charset="utf-8"></script>
+  <script src="app.js?v=20260523d" charset="utf-8"></script>
 </body>
 </html>
