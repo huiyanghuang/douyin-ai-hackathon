@@ -21,3 +21,6 @@ DEMOS_FILE = Path(__file__).parent / "demos.json"
 
 SSE_POLL_INTERVAL = 0.5
 TASK_TTL_SECONDS = 60 * 60 * 2
+
+# 用户认证：SQLite 数据库路径
+AUTH_DB_PATH = Path(os.environ.get("AUTH_DB_PATH", "_data/dyhk_auth.db")).resolve()

@@ -135,6 +135,8 @@ const state = {
     visibleLevels: new Set(["core", "branch", "leaf", "unknown"]),
     visibleRelations: null,
   },
+  // 用户认证：登录后 { user: {id, username}, token }；未登录 null
+  auth: { user: null, token: null },
 };
 
 /* ---------- 概念层级（从 explanation 前缀 [核心]/[分支]/[细节] 提取） ---------- */
@@ -163,12 +165,15 @@ const $$ = (sel) => document.querySelectorAll(sel);
 /* ============================================================
  * 入口
  * ============================================================ */
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   bindInput();
   bindTabs();
   bindChat();
   bindBack();
   bindHistoryClear();
+  bindAuthModal();
+  await bootstrapAuth();   // 启动时尝试恢复登录
+  renderUserBar();
   renderHistory();
 });
 
@@ -301,12 +306,18 @@ function buildMarkdown(d) {
 /* ============================================================
  * 我的历史记录（localStorage，最多 HISTORY_MAX 条）
  * ============================================================ */
-const HISTORY_KEY = "dyhk_history_v1";
+const HISTORY_KEY_PREFIX = "dyhk_history_v1_";
 const HISTORY_MAX = 20;
+
+/* 按当前登录用户分桶；未登录 → "guest"。 */
+function getHistoryKey() {
+  const u = state.auth?.user?.username;
+  return HISTORY_KEY_PREFIX + (u ? u.toLowerCase() : "guest");
+}
 
 function loadHistory() {
   try {
-    const raw = localStorage.getItem(HISTORY_KEY);
+    const raw = localStorage.getItem(getHistoryKey());
     if (!raw) return [];
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : [];
@@ -318,7 +329,7 @@ function loadHistory() {
 
 function writeHistory(arr) {
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(arr));
+    localStorage.setItem(getHistoryKey(), JSON.stringify(arr));
   } catch (e) {
     console.warn("history write failed", e);
   }
@@ -431,6 +442,179 @@ function bindHistoryClear() {
     clearHistory();
     renderHistory();
   });
+}
+
+/* ============================================================
+ * 用户认证（前后端真登录，token 存 localStorage）
+ * ============================================================ */
+const AUTH_TOKEN_KEY = "dyhk_auth_token_v1";
+
+/** 给所有 /api/* 调用统一带上 Authorization，方便后端识别当前用户。 */
+function authHeaders() {
+  return state.auth.token ? { Authorization: `Bearer ${state.auth.token}` } : {};
+}
+
+async function bootstrapAuth() {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  if (!token) return;
+  state.auth.token = token;
+  try {
+    const res = await fetch("/api/auth/me", { headers: authHeaders() });
+    if (res.ok) {
+      state.auth.user = await res.json();
+    } else {
+      // token 过期 / 无效
+      state.auth.token = null;
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    }
+  } catch (e) {
+    console.warn("bootstrapAuth network fail:", e);
+    // 网络挂时保留 token，下次刷新再试
+  }
+}
+
+function renderUserBar() {
+  const bar = $("#user-bar");
+  if (!bar) return;
+  if (state.auth.user) {
+    bar.innerHTML = `
+      <div class="flex items-center gap-2">
+        <button class="user-btn" id="user-name-btn" title="点击退出登录">
+          <span class="user-name">${escapeHtml(state.auth.user.username)}</span>
+          <span class="text-white/40 text-[11px]">▾</span>
+        </button>
+      </div>`;
+    $("#user-name-btn").onclick = async () => {
+      if (!confirm(`退出当前账号 ${state.auth.user.username}？`)) return;
+      await logoutUser();
+    };
+  } else {
+    bar.innerHTML = `
+      <div class="flex items-center gap-2">
+        <button class="user-btn" data-mode="login">登录</button>
+        <button class="user-btn is-primary" data-mode="register">注册</button>
+      </div>`;
+    bar.querySelectorAll("[data-mode]").forEach((b) =>
+      b.addEventListener("click", () => openAuthModal(b.dataset.mode))
+    );
+  }
+}
+
+let _authMode = "login";
+function openAuthModal(mode) {
+  _authMode = mode === "register" ? "register" : "login";
+  const modal = $("#auth-modal");
+  applyAuthMode();
+  $("#auth-error").classList.add("hidden");
+  $("#auth-form").reset();
+  modal.classList.remove("hidden");
+  setTimeout(() => $("#auth-username").focus(), 50);
+}
+
+function closeAuthModal() {
+  $("#auth-modal").classList.add("hidden");
+}
+
+function applyAuthMode() {
+  const isReg = _authMode === "register";
+  $("#auth-title").textContent = isReg ? "注册新账号" : "登录";
+  $("#auth-subtitle").textContent = isReg
+    ? "用户名 2-32 字符 · 密码至少 6 位"
+    : "用账号同步你的视频解析历史";
+  $("#auth-confirm-field").hidden = !isReg;
+  $("#auth-submit").textContent = isReg ? "注册" : "登录";
+  $("#auth-switch-hint").textContent = isReg ? "已经有账号？" : "没有账号？";
+  $("#auth-switch").textContent = isReg ? "去登录" : "注册一个";
+}
+
+function bindAuthModal() {
+  $("#auth-close")?.addEventListener("click", closeAuthModal);
+  $("#auth-modal")?.addEventListener("click", (e) => {
+    if (e.target.id === "auth-modal") closeAuthModal();
+  });
+  $("#auth-switch")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    _authMode = _authMode === "register" ? "login" : "register";
+    applyAuthMode();
+    $("#auth-error").classList.add("hidden");
+  });
+  $("#auth-form")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = $("#auth-username").value.trim();
+    const password = $("#auth-password").value;
+    const errEl = $("#auth-error");
+    errEl.classList.add("hidden");
+    const submitBtn = $("#auth-submit");
+    submitBtn.disabled = true;
+    try {
+      if (_authMode === "register") {
+        const confirmPw = $("#auth-confirm").value;
+        if (confirmPw !== password) throw new Error("两次输入的密码不一致");
+        await registerUser(username, password);
+      } else {
+        await loginUser(username, password);
+      }
+      closeAuthModal();
+      renderUserBar();
+      renderHistory();  // 切换用户后历史记录立刻刷新
+      showToast(_authMode === "register" ? "注册成功，已登录" : "登录成功");
+    } catch (err) {
+      errEl.textContent = err.message || String(err);
+      errEl.classList.remove("hidden");
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+  // ESC 关闭
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("#auth-modal").classList.contains("hidden")) {
+      closeAuthModal();
+    }
+  });
+}
+
+async function registerUser(username, password) {
+  const res = await fetch("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || `注册失败 (HTTP ${res.status})`);
+  }
+  state.auth.token = data.token;
+  state.auth.user = data.user;
+  localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+}
+
+async function loginUser(username, password) {
+  const res = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || `登录失败 (HTTP ${res.status})`);
+  }
+  state.auth.token = data.token;
+  state.auth.user = data.user;
+  localStorage.setItem(AUTH_TOKEN_KEY, data.token);
+}
+
+async function logoutUser() {
+  if (state.auth.token) {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", headers: authHeaders() });
+    } catch {}
+  }
+  state.auth.token = null;
+  state.auth.user = null;
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  renderUserBar();
+  renderHistory();
+  showToast("已退出登录");
 }
 
 /* ============================================================
