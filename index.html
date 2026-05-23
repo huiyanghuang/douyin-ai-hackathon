@@ -181,33 +181,69 @@
 
     <!-- Tab 2: 概念图谱 -->
     <div id="tab-graph" class="tab-panel hidden">
-      <div class="bg-inkSoft rounded-xl2 p-4 relative overflow-hidden">
-        <div class="flex items-center justify-between mb-2 px-2 text-sm text-white/40">
-          <span>拖动节点 · 悬停查看说明 · 滚轮缩放</span>
-          <span class="text-xs">大节点 = 知识中心，连线颜色代表关系类型</span>
-        </div>
-        <div class="relative">
-          <svg id="graph-svg" class="w-full" style="height: 600px"></svg>
+      <div class="integrated-view flex gap-3 items-stretch" style="height: 660px">
 
-          <!-- 左上：控制面板 -->
-          <div id="graph-controls" class="absolute top-2 left-2 flex flex-col gap-2 z-10">
-            <button id="graph-play" class="graph-ctrl-btn graph-ctrl-primary" type="button">
-              <span class="graph-ctrl-icon">▶</span>
-              <span class="graph-ctrl-label">讲解</span>
-            </button>
-            <button id="graph-reset" class="graph-ctrl-btn graph-ctrl-sm" type="button" title="重置布局">
-              ↺ 重置
-            </button>
+        <!-- ============ 左栏：筛选 / 统计 ============ -->
+        <aside class="w-44 shrink-0 bg-inkSoft rounded-xl2 p-3 overflow-y-auto flex flex-col gap-4">
+          <div>
+            <div class="panel-section-title">概念层级</div>
+            <div id="filter-levels" class="space-y-1 mt-2"></div>
+          </div>
+          <div>
+            <div class="panel-section-title">关系类型</div>
+            <div id="filter-relations" class="space-y-1 mt-2"></div>
+          </div>
+          <div class="mt-auto pt-2 border-t border-inkLine text-[11px] text-white/40" id="graph-stats">
+            节点 0 · 连线 0
+          </div>
+        </aside>
+
+        <!-- ============ 中央：主图谱 ============ -->
+        <div class="flex-1 bg-inkSoft rounded-xl2 p-3 relative overflow-hidden flex flex-col">
+          <div class="flex items-center justify-between mb-2 px-1 text-xs text-white/40">
+            <span>拖动节点 · 悬停查看说明 · 滚轮缩放</span>
+            <div class="flex gap-1">
+              <button class="layout-btn active" data-layout="force">力布局</button>
+              <button class="layout-btn" data-layout="radial">径向 mindmap</button>
+            </div>
+          </div>
+          <div class="relative flex-1">
+            <svg id="graph-svg" class="w-full h-full"></svg>
+
+            <!-- 左上：控制面板 -->
+            <div id="graph-controls" class="absolute top-2 left-2 flex flex-col gap-2 z-10">
+              <button id="graph-play" class="graph-ctrl-btn graph-ctrl-primary" type="button">
+                <span class="graph-ctrl-icon">▶</span>
+                <span class="graph-ctrl-label">讲解</span>
+              </button>
+              <button id="graph-reset" class="graph-ctrl-btn graph-ctrl-sm" type="button" title="重置布局">
+                ↺ 重置
+              </button>
+            </div>
+
+            <!-- 右上：关系图例 -->
+            <div id="graph-legend" class="absolute top-2 right-2 z-10"></div>
+
+            <!-- 底部讲解栏 -->
+            <div id="graph-tour-bar" class="hidden absolute left-0 right-0 bottom-0 px-4 py-3 bg-ink/90 border-t border-inkLine text-sm"></div>
+
+            <div id="graph-tooltip" class="hidden absolute bg-ink border border-inkLine rounded-xl2 p-3 max-w-xs text-sm shadow-card pointer-events-none z-20"></div>
+          </div>
+        </div>
+
+        <!-- ============ 右栏：学习进度 + 概念清单 ============ -->
+        <aside class="w-60 shrink-0 bg-inkSoft rounded-xl2 p-3 flex flex-col overflow-hidden">
+          <div class="panel-section-title">学习进度</div>
+          <div class="quiz-progress mt-2 mb-1.5"><div id="learn-progress-bar" class="quiz-progress-bar" style="width: 0%"></div></div>
+          <div class="flex items-center justify-between text-xs text-white/60 mb-3">
+            <span id="learn-progress-text">0 / 0 个</span>
+            <button id="learn-reset" class="text-[10px] text-white/40 hover:text-white">重置</button>
           </div>
 
-          <!-- 右上：关系图例（由 JS 渲染） -->
-          <div id="graph-legend" class="absolute top-2 right-2 z-10"></div>
+          <div class="panel-section-title mb-2">概念清单</div>
+          <div id="concept-list-panel" class="flex-1 overflow-y-auto space-y-1.5 pr-1"></div>
+        </aside>
 
-          <!-- 底部：讲解模式时显示当前讲到哪个概念 -->
-          <div id="graph-tour-bar" class="hidden absolute left-0 right-0 bottom-0 px-4 py-3 bg-ink/90 border-t border-inkLine text-sm"></div>
-
-          <div id="graph-tooltip" class="hidden absolute bg-ink border border-inkLine rounded-xl2 p-3 max-w-xs text-sm shadow-card pointer-events-none z-20"></div>
-        </div>
       </div>
     </div>
 
