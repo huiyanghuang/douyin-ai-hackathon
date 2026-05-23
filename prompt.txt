@@ -1,0 +1,155 @@
+我在参加抖音黑客松（赛道二｜抖音精选-内容重构：让视频成为你的生活搭子
+ 1. 题目名称
+从“看见”到“赋能”：基于真实内容场景的 AI 知识重构与转化
+ 2. 核心任务
+本赛道要求参赛团队聚焦游戏、二次元、科技、科普、人文社科、职场、穿搭、医疗健康等各类短视频或中长视频内容，围绕真实的内容消费场景，设计并开发一套 AI 方案。
+作品需打破传统“被动观看”的模式，利用 AI 技术对抖音精选上的优质视频信息进行深度理解、重新组织与场景化转译，将其转化为个体可学习、可直接应用的个性化知识与复用能力，打造兼具“获得感”与“趣味性”的游戏化或交互式体验。
+ 3. 开发方向指引
+参赛团队无需覆盖所有维度，可选择以下三大方向之一进行深度探索与产品实现：
+- 方向一：深度理解与结构化重塑（从“理解”出发）
+- 针对信息密度高、观点复杂的视频内容，利用 AI 帮助用户快速提取核心结构、识别关键要点；或在同主题的多条视频内容之间建立关联、对比与对照，将碎片化的视频转化为具判断价值的结构化知识网络。
+- 方向二：多维语境转译与感知强化（从“表达”出发）
+- 由 AI 参与内容的二次呈现，对视频中的知识、观点或情绪进行重新组织、转译与讲述。通过更符合特定用户群体语境的交互方式，让深奥的知识更好懂、让不同的观点更易被权衡比较。
+- 方向三：可执行能力转化与工具化部署（从“使用”出发）
+- 将视频中沉淀的经验、方法或操作流，转化为可执行、可复用的轻量化工具、智能 Agent 或具象化应用。使用户在特定现实情境中能够直接调用该能力，实现“看完即用”。
+ 4. 交付物标准与形态
+- 本赛道不限制作品形态，团队可自由选择 Agent、App 或 Web 应用等形式呈现。
+- 作品需提供清晰且可体验的交互方式（如交互界面、对话系统或功能原型），供评审现场发起请求并直观感受其转化效果与核心价值，严禁仅提交静态方案说明。
+ 5. 评审锚点
+“内容，是否被转化为用户能看懂、能学到、能用上的体验，并在过程中带来获得感与一定趣味性？”
+抖音AI创变者计划2025获奖作品：随厨小食堂
+Demo
+暂时无法在飞书文档外展示此内容
+
+评审维度
+评审关注点
+权重
+场景与问题洞察
+是否选取了有价值的内容场景；是否清楚目标用户；内容是否值得被转化
+15%
+AI能力与产品结合
+AI是否参与内容理解/重构；是否改变内容使用方式
+20%
+体验完整性
+是否可被直接体验；是否形成基本闭环
+15%
+用户价值感
+是否将内容转化为可理解、可判断或可执行的能力；是否提升学习/决策/行动效率
+30%
+创新性与延展潜力
+是否提出新的内容消费或使用方式；是否具备扩展空间
+20%
+二、 作品交付物标准
+各参赛团队须在截止时间前，在我们制定的飞书链接提交以下完整材料：
+ a.作品提交（day1 11点开放至 day2 12 点）：https://bytedance.larkoffice.com/share/base/form/shrcnrboRKGX4B8NGPI2w7usr3h
+1. 产品方案说明书 (Pitch Deck)： 飞书文档，内容须包含：核心痛点洞察、系统技术架构图、多模态交互流程设计（UX）及潜在的商业与社会价值。
+2. 产品演示视频 (Demo Video)： MP4 格式，时长严格控制在 3 分钟以内。视频须清晰录制并展示真实应用或 MVP 原型系统的核心操作流程，重点体现“多模态输入后生成交互体验”的完整闭环。
+3. 技术工程验证材料： 提供 GitHub 仓库链接或其他链接。内容须包含 Prompt 编排、Agent 核心逻辑代码或主要算法脚本，用以评估团队在 25 小时内的真实工程产出与技术可行性。
+b.游园会海报（day1 22 ：30前）：https://bytedance.larkoffice.com/share/base/form/shrcnoViRfTubL2FE3lwrHoL0id），做一个科普视频AI解构器。你负责前端，纯 HTML/CSS/JS，不要引 React/Vue/Webpack。
+
+  ## 部署
+  最终部署在 douyinhackathon.xinguangtreehole.com，由 Nginx 提供静态文件。后端在同域 /api/* 下。
+
+  ⚠️ 重要：不要直接上传到服务器！先推送到 GitHub 分支：
+  https://github.com/huiyanghuang/douyin-ai-hackathon/tree/huguangyu
+  在该分支上集中评审、合并后再统一发布到生产环境。
+
+  ## 技术约束
+  - 纯 HTML + 原生 JS（ES6+）+ CSS
+  - 允许 CDN 引入：Tailwind CSS、D3.js v7、可选 marked.js（渲染聊天 markdown）
+  - 单页应用，不需要路由库（hash 路由够了）
+  - 移动端可读即可，主要面向桌面端评审演示
+
+  ## 后端 API 契约（不要修改，按这个调用）
+
+  POST /api/analyze
+    - multipart: video=<文件> 或 form: url=<视频URL>
+    - 返回 { "task_id": "uuid" }
+
+  GET /api/progress/{task_id}   （SSE，用 EventSource 接收）
+    - 事件 data 是 JSON：
+      { stage: "uploading|analyzing|structuring|done|error", percent, message, result?, error? }
+    - 收到 done 后关闭 EventSource，渲染 result
+
+  POST /api/chat
+    - body: { task_id, history: [{role, text}], message }
+    - 返回 { reply }
+
+  GET /api/demos
+    - 返回 [ { id, title, thumb, cached_result } ]
+    - 进入页面就要预加载，点击 demo 卡片直接渲染 cached_result，**不要再走 analyze 流程**
+
+  GET /api/result/{task_id}
+    - 直接返回结果 JSON
+
+  ## 结果 JSON 结构（前端按这个渲染，不要改字段名）
+
+  {
+    title, summary,
+    key_concepts: [{ name, explanation, analogy }],
+    concept_relations: [{ from, to, relation }],
+    key_points: [{ point, timestamp, importance: "high|medium|low" }],
+    quiz: [{ question, options: [A,B,C,D], answer, explanation }],
+    follow_up_questions: [string]
+  }
+
+  ## 页面结构
+
+  整体一个 hero 大标题「科普解构器 ·让视频变成你的私人课程」，下方分三个区域：
+
+  ### 区域一：输入区
+  - 大拖拽框（支持点击/拖拽上传 MP4，进度条显示上传比例）
+  - 下方一个 URL 输入框 + "解析链接" 按钮（支持抖音/B站链接）
+  - 再下方一行小卡片，是从 /api/demos 拉来的预置案例，点击秒出结果
+  - 文件上传成功 →跳转到「分析进度」全屏遮罩
+
+  ### 区域二：分析进度（全屏遮罩）
+  - 居中显示当前阶段的中文文案（来自 SSE 的 message 字段）
+  - 一个有动画的进度条（percent）
+  - 阶段图标变化：上传 →理解 →构建 →完成
+  - 完成后淡出，结果区淡入
+
+  ### 区域三：结果展示（Tab 切换四个模块）
+
+  **Tab 1: 知识卡片**
+  - 顶部 title + summary（用大字号引用样式）
+  - 下方 key_concepts 网格，每个概念一张卡：name（粗体）、explanation、analogy（用不同颜色高亮"类比："）
+  - 右侧侧栏列出 key_points，按 timestamp 排序，importance=high 加红点，点击时间戳如果有原视频则跳转（先不实现跳转）
+
+  **Tab 2: 概念图谱**（产品最有视觉冲击力的部分，重点做好）
+  - D3.js v7 force-directed graph
+  - 节点 = key_concepts 里的每个 name，连线 = concept_relations
+  - 节点圆形，hover 显示完整 explanation 浮层
+  - 连线上标注 relation 文字
+  - 力导向参数：charge=-300、linkDistance=120，节点可拖拽
+  - 颜色用柔和的科技蓝/紫色调，避免花哨
+
+  **Tab 3: AI 追问**
+  - 左侧聊天列表，右侧输入框
+  - 进入时显示 follow_up_questions 作为点击即问的建议
+  - 用户消息靠右气泡，AI 消息靠左气泡 + marked.js 渲染 markdown
+  - 发送时 POST /api/chat，把所有历史消息和当前 task_id 带上
+  - 流式效果可选（v1 不做，直接等完整返回即可）
+
+  **Tab 4: 知识测验**
+  - 卡片式逐题展示 quiz
+  - 用户选择后立刻判断对错，显示 explanation
+  - 全部答完显示得分页（X/Y 正确）和"再来一遍"按钮
+  - 简单庆祝动画（confetti 或 CSS keyframes）
+
+  ## 视觉风格
+  - 主色：深蓝 #1a1d29 背景 + 紫色 #6366f1 强调色 + 白色文字
+  - 字体：系统默认 sans-serif，标题用 font-weight 700
+  - 圆角统一 12px，卡片有微弱 shadow
+  - 整体克制、专业、有"科技感"，不要花哨
+
+  ## 工作顺序
+  1. 先把 HTML 骨架和 Tab 切换搭好（用 mock JSON 渲染四个模块）
+  2. 接 /api/demos，能点击预置案例直接渲染
+  3. 接上传 + SSE 进度
+  4. 接 chat
+  5. 美化 + D3 图谱细节
+
+  mock JSON 你自己造一份合理的塞进 window.__MOCK__，方便没有后端时也能调样式。
+
+  最终交付：一个 index.html + 一个 app.js + 一个 styles.css，加 /static 目录放图标。
