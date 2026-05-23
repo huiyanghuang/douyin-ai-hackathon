@@ -10,11 +10,15 @@ from typing import Any
 
 from google import genai
 from google.genai import types
+from google.genai.errors import ServerError
 
 from . import config
 from .prompts import ANALYZE_SYSTEM_PROMPT
 from .schemas import GEMINI_RESPONSE_SCHEMA
 from .store import store
+
+# Pro 高峰期会 503 UNAVAILABLE，Flash 用同一个 schema 走得通，做一次自动回落。
+ANALYZE_FALLBACK_MODEL = "gemini-2.5-flash"
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +63,13 @@ async def analyze_video(task_id: str, video_path: Path) -> None:
             temperature=0.4,
         )
 
-        resp = await asyncio.to_thread(
-            client.models.generate_content,
-            model=config.MODEL_ANALYZE,
+        resp = await _generate_with_fallback(
+            client,
+            task_id,
+            primary=config.MODEL_ANALYZE,
+            fallback=ANALYZE_FALLBACK_MODEL,
             contents=[uploaded, "请解构这段科普视频"],
-            config=gen_config,
+            gen_config=gen_config,
         )
 
         await store.update(task_id, stage="structuring", percent=80, message="正在构建知识图谱...")
@@ -94,6 +100,44 @@ async def analyze_video(task_id: str, video_path: Path) -> None:
                 video_path.unlink()
         except OSError as e:
             logger.warning("[%s] cleanup local file failed: %s", task_id, e)
+
+
+async def _generate_with_fallback(
+    client: genai.Client,
+    task_id: str,
+    *,
+    primary: str,
+    fallback: str,
+    contents: list,
+    gen_config: types.GenerateContentConfig,
+):
+    """Pro 高峰期 503 时：先睡 5s 重试一次 Pro，再不行换 Flash。"""
+
+    def _call(model: str):
+        return client.models.generate_content(model=model, contents=contents, config=gen_config)
+
+    # 第一次：Pro
+    try:
+        return await asyncio.to_thread(_call, primary)
+    except ServerError as e:
+        if getattr(e, "code", None) != 503:
+            raise
+        logger.warning("[%s] %s 503，5s 后重试一次", task_id, primary)
+
+    await store.update(task_id, message=f"AI 服务高峰，{primary} 重试中...")
+    await asyncio.sleep(5)
+
+    # 第二次：Pro 再试
+    try:
+        return await asyncio.to_thread(_call, primary)
+    except ServerError as e:
+        if getattr(e, "code", None) != 503:
+            raise
+        logger.warning("[%s] %s 仍 503，回落到 %s", task_id, primary, fallback)
+
+    # 第三次：Flash 兜底
+    await store.update(task_id, message=f"切换到 {fallback} 兜底...")
+    return await asyncio.to_thread(_call, fallback)
 
 
 async def yt_dlp_download(url: str, out_dir: Path) -> Path:
