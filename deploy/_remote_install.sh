@@ -8,8 +8,15 @@ APP_DIR=/opt/douyin-ai-hackathon
 DOMAIN=douyinhackathon.xinguangtreehole.com
 REPO=https://github.com/huiyanghuang/douyin-ai-hackathon.git
 BRANCH=main
-GEMINI_KEY=AIzaSyBfL5MxLtht8NcVayzNg8AtKhORrxMeeXU
 PORT=8001
+# Gemini key 不再写在 repo 里，部署机在跑此脚本前必须已经写好 /etc/douyin-backend.env：
+#   echo 'GEMINI_API_KEY=...' > /etc/douyin-backend.env
+#   echo 'UPLOAD_DIR=/var/lib/douyin-uploads' >> /etc/douyin-backend.env
+#   chmod 600 /etc/douyin-backend.env
+if [ ! -f /etc/douyin-backend.env ]; then
+    echo "FATAL: /etc/douyin-backend.env missing. Create it with GEMINI_API_KEY=... before running this." >&2
+    exit 1
+fi
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -48,8 +55,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$APP_DIR
-Environment=GEMINI_API_KEY=$GEMINI_KEY
-Environment=UPLOAD_DIR=/var/lib/douyin-uploads
+EnvironmentFile=/etc/douyin-backend.env
 ExecStart=$APP_DIR/.venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port $PORT --workers 1
 Restart=always
 RestartSec=3

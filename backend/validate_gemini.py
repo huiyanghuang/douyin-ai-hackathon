@@ -11,7 +11,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-API_KEY = "AIzaSyBfL5MxLtht8NcVayzNg8AtKhORrxMeeXU"
+API_KEY = os.environ["GEMINI_API_KEY"]
 MODEL = "gemini-2.5-pro"
 
 # 用契约中的 schema，但精简到能验证「视频直读 + 结构化输出」即可

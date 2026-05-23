@@ -6,8 +6,9 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/opt/douyin-ai-hackathon
-Environment=GEMINI_API_KEY=AIzaSyBfL5MxLtht8NcVayzNg8AtKhORrxMeeXU
-Environment=UPLOAD_DIR=/var/lib/douyin-uploads
+# 先 sudo install -m 600 -o root -g root /dev/stdin /etc/douyin-backend.env，
+# 内容：GEMINI_API_KEY=...  和  UPLOAD_DIR=/var/lib/douyin-uploads
+EnvironmentFile=/etc/douyin-backend.env
 ExecStart=/opt/douyin-ai-hackathon/.venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --workers 1
 Restart=always
 RestartSec=3
