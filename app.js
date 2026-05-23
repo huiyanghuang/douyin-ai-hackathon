@@ -136,7 +136,8 @@ const state = {
     visibleRelations: null,
   },
   // 用户认证：登录后 { user: {id, username}, token }；未登录 null
-  auth: { user: null, token: null },
+  // forced=true 时 auth modal 不可关闭（强制登录门）
+  auth: { user: null, token: null, forced: false },
   // 图谱布局："force" 力导向 / "radial" 径向 mindmap
   graphLayout: "force",
 };
@@ -178,6 +179,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   await bootstrapAuth();   // 启动时尝试恢复登录
   renderUserBar();
   renderHistory();
+  // 强制登录门：未登录 → 立刻打开 auth modal 且不可关闭
+  if (!state.auth.user) {
+    setForcedAuth(true);
+    openAuthModal("login");
+  }
 });
 
 function bindLayoutSwitcher() {
@@ -527,7 +533,20 @@ function openAuthModal(mode) {
 }
 
 function closeAuthModal() {
+  if (state.auth.forced) return;  // 强制登录模式：不让关
   $("#auth-modal").classList.add("hidden");
+}
+
+/* 切换"强制登录"门：true 时 X 按钮藏起来 + ESC/背景点击都无效。
+   bootstrapAuth 发现没登录 → forced=true；登录或注册成功 → forced=false；logout → 重新 forced=true。 */
+function setForcedAuth(forced) {
+  state.auth.forced = !!forced;
+  const closeBtn = $("#auth-close");
+  if (closeBtn) closeBtn.style.display = forced ? "none" : "";
+  const subtitle = $("#auth-subtitle");
+  if (subtitle && forced) {
+    subtitle.textContent = "请先登录或注册，用账号同步你的视频解析历史";
+  }
 }
 
 function applyAuthMode() {
@@ -545,7 +564,7 @@ function applyAuthMode() {
 function bindAuthModal() {
   $("#auth-close")?.addEventListener("click", closeAuthModal);
   $("#auth-modal")?.addEventListener("click", (e) => {
-    if (e.target.id === "auth-modal") closeAuthModal();
+    if (e.target.id === "auth-modal" && !state.auth.forced) closeAuthModal();
   });
   $("#auth-switch")?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -569,6 +588,7 @@ function bindAuthModal() {
       } else {
         await loginUser(username, password);
       }
+      setForcedAuth(false);  // 登录/注册成功，撤掉强制登录门
       closeAuthModal();
       renderUserBar();
       renderHistory();  // 切换用户后历史记录立刻刷新
@@ -580,9 +600,13 @@ function bindAuthModal() {
       submitBtn.disabled = false;
     }
   });
-  // ESC 关闭
+  // ESC 关闭（强制登录模式下无效）
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !$("#auth-modal").classList.contains("hidden")) {
+    if (
+      e.key === "Escape" &&
+      !$("#auth-modal").classList.contains("hidden") &&
+      !state.auth.forced
+    ) {
       closeAuthModal();
     }
   });
@@ -630,6 +654,9 @@ async function logoutUser() {
   renderUserBar();
   renderHistory();
   showToast("已退出登录");
+  // 退出后立刻重新挡住，逼用户重新登录或换号
+  setForcedAuth(true);
+  openAuthModal("login");
 }
 
 /* ============================================================
@@ -2167,7 +2194,7 @@ function showQuizReview() {
     <div class="space-y-5">
       ${wrong.map((w, i) => {
         const yourIdx = letters.indexOf(w.your);
-        const ansIdx = letters.indexOf(w.item.answer);
+        const ansIdx = letters.indexOf(normalizeAnswerLetter(w.item) || "");
         return `
         <div class="quiz-review-item">
           <div class="font-medium mb-3 leading-relaxed">${i + 1}. ${escapeHtml(w.item.question)}</div>
@@ -2198,16 +2225,35 @@ function showQuizReview() {
   });
 }
 
+/* 把 Gemini 给的 answer 规范化成单字母 A/B/C/D。
+   prompt 已强制要求，但旧任务可能产出 "B."/"b"/"选项 B"/answer 文本，不规范化
+   会导致 letter === item.answer 永远 false → 用户点啥都是 wrong。 */
+function normalizeAnswerLetter(item) {
+  const a = String(item?.answer ?? "").trim();
+  if (!a) return null;
+  // 1) 已经是单字母 A/B/C/D（含 lowercase / 带句尾标点）
+  const m = a.toUpperCase().match(/[ABCD]/);
+  if (m && a.length <= 4) return m[0];
+  // 2) 数字 0..3
+  if (/^[0-3]$/.test(a)) return "ABCD"[Number(a)];
+  // 3) answer 是 options 某一项的文本
+  const opts = item?.options || [];
+  const idx = opts.findIndex((o) => String(o).trim() === a);
+  if (idx >= 0 && idx < 4) return "ABCD"[idx];
+  return null;
+}
+
 function answerQuiz(letter, item) {
   if (state.quiz.answered) return;
   state.quiz.answered = true;
-  const ok = letter === item.answer;
+  const correctLetter = normalizeAnswerLetter(item);
+  const ok = correctLetter != null && letter === correctLetter;
   if (ok) state.quiz.correct++;
   else state.quiz.wrong.push({ idx: state.quiz.idx, item, your: letter });
   const letters = ["A", "B", "C", "D"];
   $$("#quiz-options .quiz-option").forEach((btn, i) => {
     btn.disabled = true;
-    if (letters[i] === item.answer) {
+    if (correctLetter && letters[i] === correctLetter) {
       btn.classList.add("correct");
       // 答错时给正确答案加 pulse 让眼睛知道在哪
       if (!ok) btn.classList.add("reveal-pulse");
