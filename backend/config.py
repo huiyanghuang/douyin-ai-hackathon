@@ -21,3 +21,23 @@ DEMOS_FILE = Path(__file__).parent / "demos.json"
 
 SSE_POLL_INTERVAL = 0.5
 TASK_TTL_SECONDS = 60 * 60 * 2
+
+# 各平台 Cookies 文件（可选，Netscape/Mozilla cookies.txt 格式）。
+# 通过环境变量传入：留空就走 fake-header 兜底；指向真实导出的 cookies 文件
+# 就用登录态，B站 412 / 抖音 403 概率显著降低。
+# 浏览器插件 "Get cookies.txt LOCALLY" 可一键导出。
+BILIBILI_COOKIES_FILE = (
+    Path(os.environ["BILIBILI_COOKIES_FILE"]).resolve()
+    if os.environ.get("BILIBILI_COOKIES_FILE")
+    else None
+)
+DOUYIN_COOKIES_FILE = (
+    Path(os.environ["DOUYIN_COOKIES_FILE"]).resolve()
+    if os.environ.get("DOUYIN_COOKIES_FILE")
+    else None
+)
+YOUTUBE_COOKIES_FILE = (
+    Path(os.environ["YOUTUBE_COOKIES_FILE"]).resolve()
+    if os.environ.get("YOUTUBE_COOKIES_FILE")
+    else None
+)
