@@ -81,6 +81,9 @@ class ChatRequest(BaseModel):
     task_id: str
     history: list[ChatTurn] = Field(default_factory=list)
     message: str
+    # 历史还原项：前端把存在 localStorage 里的分析结果传过来，
+    # 后端 store 找不到 task_id 时用这个兜底。schema 不强约束字段，留 dict 让 chat 直接吃。
+    analysis: dict[str, Any] | None = None
 
 
 class ChatResponse(BaseModel):

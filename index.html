@@ -31,7 +31,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <link rel="stylesheet" href="styles.css?v=20260523b" />
+  <link rel="stylesheet" href="styles.css?v=20260523c" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
   <!-- ============== HERO ============== -->
@@ -90,11 +90,14 @@
       </button>
     </div>
 
-    <!-- 预置 demo 卡片 -->
+    <!-- 我的历史记录（localStorage） -->
     <div class="mt-10">
-      <div class="text-sm text-white/40 mb-3">或试试这些预置案例：</div>
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm text-white/40">我的历史记录</div>
+        <button id="history-clear" class="hidden text-xs text-white/30 hover:text-white/60 transition">清空</button>
+      </div>
       <div id="demo-list" class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <!-- 由 JS 渲染 -->
+        <!-- 由 JS 渲染：有记录就显示历史卡片，没记录显示空状态 -->
       </div>
     </div>
   </section>
@@ -238,6 +241,6 @@
     </div><!-- /flex -->
   </section>
 
-  <script src="app.js?v=20260523b" charset="utf-8"></script>
+  <script src="app.js?v=20260523c" charset="utf-8"></script>
 </body>
 </html>
