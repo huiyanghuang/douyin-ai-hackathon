@@ -9,7 +9,7 @@ if not GEMINI_API_KEY:
     )
 
 MODEL_ANALYZE = "gemini-2.5-pro"
-MODEL_CHAT = "gemini-2.5-pro"
+MODEL_CHAT = "gemini-2.5-flash"
 
 MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 MAX_DURATION_SECONDS = 600
