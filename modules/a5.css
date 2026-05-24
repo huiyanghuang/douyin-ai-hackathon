@@ -274,3 +274,45 @@
 :root[data-theme="dark"] .a5-icon-moon,
 :root:not([data-theme]) .a5-icon-moon { display: inline; }
 :root[data-theme="light"] .a5-icon-sun { display: inline; }
+
+/* ============================================================
+ * 知识测验底部三个动作按钮：在深色/浅色主题下都强制深底白字
+ * - #quiz-review   查看错题（原 bg-inkLine）
+ * - #quiz-restart  再来一遍（原 bg-brand 紫）
+ * - .a3-share-btn  保存成就卡（原 A3 粉色渐变）
+ * 用 !important 覆盖 Tailwind 类 + A3 模块 gradient + A5 浅色变量替换
+ * ============================================================ */
+#quiz-review,
+#quiz-restart,
+.a3-share-btn {
+  background: #2d3146 !important;
+  background-image: none !important;  /* 干掉 A3 的粉色 linear-gradient */
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25) !important;
+}
+#quiz-review:hover:not(:disabled),
+#quiz-restart:hover:not(:disabled),
+.a3-share-btn:hover:not(:disabled) {
+  background: #3d4258 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35) !important;
+}
+/* 浅色主题：维持深底白字（不跟随主题变浅） */
+:root[data-theme="light"] #quiz-review,
+:root[data-theme="light"] #quiz-restart,
+:root[data-theme="light"] .a3-share-btn {
+  background: #2d3146 !important;
+  color: #ffffff !important;
+}
+:root[data-theme="light"] #quiz-review:hover:not(:disabled),
+:root[data-theme="light"] #quiz-restart:hover:not(:disabled),
+:root[data-theme="light"] .a3-share-btn:hover:not(:disabled) {
+  background: #3d4258 !important;
+}
+/* 按钮里的小 badge / kbd / icon 保持原配色不被强制白覆盖 */
+#quiz-review .bg-red-500\/30,
+:root[data-theme="light"] #quiz-review .bg-red-500\/30 {
+  background-color: rgba(239, 68, 68, 0.32) !important;
+  color: #fecaca !important;
+}
