@@ -1,11 +1,25 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>科普解构器 · 让视频变成你的私人课程</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <meta name="description" content="抖音黑客松 · 把科普视频自动解构为概念图谱、知识卡片、AI 追问与游戏化测验。" />
+
+  <!-- A5 主题 FOUC 防护：必须在任何样式表加载前设 data-theme -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem("a5_theme");
+        if (!t) t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -31,8 +45,11 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- 主样式 -->
   <link rel="stylesheet" href="styles.css?v=20260523h" />
-  <!-- A1-A6 模块（各自隔离的视觉/交互增强） -->
+
+  <!-- A1-A6 模块样式（顺序：a1 → a6，A5/A6 必须在主样式之后） -->
   <link rel="stylesheet" href="modules/a1.css" />
   <link rel="stylesheet" href="modules/a2.css" />
   <link rel="stylesheet" href="modules/a3.css" />
@@ -41,6 +58,13 @@
   <link rel="stylesheet" href="modules/a6.css" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
+
+  <!-- A5 · 主题切换按钮（左上角浮动） -->
+  <button id="a5-toggle" class="a5-toggle" type="button" aria-label="切换浅色/深色模式" title="切换主题">
+    <span class="a5-icon a5-icon-sun">☀</span>
+    <span class="a5-icon a5-icon-moon">☾</span>
+  </button>
+
   <!-- ============== 顶部用户区 ============== -->
   <div id="user-bar" class="fixed top-3 right-4 z-30 text-sm">
     <!-- 由 JS 渲染：登录前两个按钮，登录后用户名 + 下拉 -->
@@ -328,8 +352,59 @@
     </div><!-- /flex -->
   </section>
 
+  <!-- ===================== A1-A4 模块挂载点（自附着 DOM） ===================== -->
+
+  <!-- A1 · 四 Tab 联动：浮动提示 chip -->
+  <div id="a1-chip" class="a1-chip hidden" role="status" aria-live="polite">
+    <span class="a1-chip-icon">↪</span>
+    <span class="a1-chip-text">已选中：<b id="a1-chip-name"></b><span class="a1-chip-hint"> · 在卡片中查看</span></span>
+    <button id="a1-chip-go" class="a1-chip-go" type="button" aria-label="跳转到知识卡片">→</button>
+    <button id="a1-chip-close" class="a1-chip-close" type="button" aria-label="关闭">×</button>
+  </div>
+
+  <!-- A2 · 生成完成庆祝动画 overlay -->
+  <div id="a2-celebrate" class="a2-celebrate hidden" aria-hidden="true">
+    <div class="a2-shine"></div>
+    <div class="a2-content">
+      <div class="a2-icon">✦</div>
+      <div class="a2-title">你的私人课程已就绪</div>
+      <div class="a2-stats" id="a2-stats"></div>
+    </div>
+  </div>
+
+  <!-- A3 · 学习成就卡：隐藏模板（视口外，仅供 html2canvas 抓图） -->
+  <div id="a3-card-template" class="a3-card-template" aria-hidden="true">
+    <div class="a3-card">
+      <div class="a3-brand">
+        <span class="a3-logo">SCI</span>
+        <span class="a3-tag">科普解构器 · 学习成就</span>
+      </div>
+      <div class="a3-video-title" id="a3-video-title">视频标题</div>
+      <div class="a3-score-row">
+        <div class="a3-score" id="a3-score">0/0</div>
+        <div class="a3-score-label" id="a3-score-label">完成</div>
+      </div>
+      <div class="a3-concepts-title">我学会了</div>
+      <ul class="a3-concepts" id="a3-concepts"></ul>
+      <div class="a3-footer">
+        douyinhackathon.xinguangtreehole.com · 抖音黑客松 2025
+      </div>
+    </div>
+  </div>
+
+  <!-- A4 · 视频缩略图 + 智能进度文案（JS 启动后会自动 reparent 到 progress-overlay 内部） -->
+  <div id="a4-overlay-inject" class="a4-overlay-inject hidden" aria-hidden="true">
+    <div class="a4-thumb-wrap">
+      <canvas id="a4-thumb-canvas" width="220" height="124"></canvas>
+      <div class="a4-thumb-time" id="a4-thumb-time">00:00</div>
+    </div>
+    <div class="a4-flavor" id="a4-flavor"></div>
+  </div>
+
+  <!-- 主脚本（原版未改） -->
   <script src="app.js?v=20260523h" charset="utf-8"></script>
-  <!-- A1-A6 模块 JS（自挂载，零修改 app.js）；A6 是纯 CSS 故无 JS -->
+
+  <!-- A1-A6 模块脚本（A6 纯 CSS 无 JS） -->
   <script src="modules/a1.js"></script>
   <script src="modules/a2.js"></script>
   <script src="modules/a3.js"></script>
