@@ -1,0 +1,95 @@
+/* ============================================================
+ * A2 · 生成完成庆祝动画
+ * 命名空间：.a2-*  /  #a2-*
+ * ============================================================ */
+
+.a2-celebrate {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: a2-fade 1.85s ease-out forwards;
+}
+.a2-celebrate.hidden { display: none !important; }
+@keyframes a2-fade {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  72%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.a2-shine {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(99, 102, 241, 0.42) 0%, rgba(99, 102, 241, 0) 55%);
+  animation: a2-shine 1.85s ease-out forwards;
+}
+@keyframes a2-shine {
+  0%   { transform: scale(0.4); opacity: 0; }
+  40%  { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+.a2-content {
+  position: relative;
+  text-align: center;
+  animation: a2-pop 1.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+@keyframes a2-pop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  18%  { opacity: 1; transform: scale(1.06); }
+  35%  { transform: scale(1); }
+  85%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: translateY(-12px) scale(0.98); }
+}
+
+.a2-icon {
+  font-size: 56px;
+  background: linear-gradient(135deg, #fde68a, #f472b6, #818cf8);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 0 14px rgba(244, 114, 182, 0.45));
+  animation: a2-spin 1.65s ease-out forwards;
+}
+@keyframes a2-spin {
+  0%   { transform: rotate(-30deg) scale(0.5); }
+  60%  { transform: rotate(15deg) scale(1.18); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.a2-title {
+  font-size: 38px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #c7d2fe, #fff, #fde68a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4));
+}
+
+.a2-stats {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.82);
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.a2-stats span {
+  color: #fde68a;
+  font-weight: 700;
+  margin: 0 3px;
+}
+
+/* 金色 confetti 变体 —— 与 main 自带的 .confetti-piece 共存 */
+.confetti-piece.a2-gold {
+  background: linear-gradient(135deg, #fde68a, #f59e0b) !important;
+  width: 8px;
+  height: 16px;
+  box-shadow: 0 0 6px rgba(253, 230, 138, 0.6);
+}

@@ -1,0 +1,61 @@
+/* ============================================================
+ * A4 · 视频缩略图 + 智能进度文案
+ * 命名空间：.a4-*  /  #a4-*
+ * ============================================================ */
+
+.a4-overlay-inject {
+  margin: 0 auto 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  animation: a4-fade-in 0.5s ease-out both;
+}
+.a4-overlay-inject.hidden { display: none !important; }
+@keyframes a4-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.a4-thumb-wrap {
+  position: relative;
+  width: 220px;
+  height: 124px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+#a4-thumb-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #2d3146, #1a1d29);
+}
+.a4-thumb-time {
+  position: absolute;
+  bottom: 6px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 2px 6px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.a4-flavor {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.04em;
+  font-style: italic;
+  min-height: 1.2em;
+  animation: a4-flavor-pulse 1.6s ease-in-out infinite;
+  text-align: center;
+}
+@keyframes a4-flavor-pulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
