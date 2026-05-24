@@ -276,6 +276,35 @@
 :root[data-theme="light"] .a5-icon-sun { display: inline; }
 
 /* ============================================================
+ * 浅色主题下：硬编码 color:#fff 的内容元素改成深字（容器 bg 已经被 A5/A6
+ * 改成浅色了，白字会看不见）
+ * ============================================================ */
+:root[data-theme="light"] .summary-md          { color: var(--a5-text-soft) !important; }
+:root[data-theme="light"] .summary-md h1,
+:root[data-theme="light"] .summary-md strong   { color: var(--a5-text) !important; }
+:root[data-theme="light"] .summary-md h2       { color: #4f46e5 !important; border-bottom-color: #e4e7f0 !important; }
+:root[data-theme="light"] .summary-md h3       { color: #6366f1 !important; }
+:root[data-theme="light"] .summary-md em       { color: var(--a5-text-mute) !important; }
+:root[data-theme="light"] .summary-md blockquote {
+  color: var(--a5-text-soft) !important;
+  border-left-color: #6366f1 !important;
+  background: rgba(99, 102, 241, 0.06) !important;
+}
+:root[data-theme="light"] .summary-md code     {
+  background: rgba(99, 102, 241, 0.1) !important;
+  color: #4f46e5 !important;
+}
+
+/* Toast 浅色主题：A6 把 toast 背景改成 rgba(255,255,255,0.85) 但文字还是白色 */
+:root[data-theme="light"] .toast               { color: var(--a5-text) !important; }
+:root[data-theme="light"] .toast-error         { color: #b91c1c !important; }
+
+/* Key points / 概念关键句 浅色补字色 */
+:root[data-theme="light"] .kp-ts               { color: #4f46e5 !important; }
+
+/* AI 追问聊天气泡：assistant 已经 A5 覆盖，user 紫底白字保持不动 */
+
+/* ============================================================
  * 知识测验底部三个动作按钮：在深色/浅色主题下都强制深底白字
  * - #quiz-review   查看错题（原 bg-inkLine）
  * - #quiz-restart  再来一遍（原 bg-brand 紫）

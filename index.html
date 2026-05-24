@@ -45,16 +45,20 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- KaTeX：渲染笔记里的 LaTeX 公式 $...$ / $$...$$ -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 
   <!-- 主样式 -->
-  <link rel="stylesheet" href="styles.css?v=20260524c" />
+  <link rel="stylesheet" href="styles.css?v=20260524d" />
 
   <!-- A1-A6 模块样式（顺序：a1 → a6，A5/A6 必须在主样式之后） -->
   <link rel="stylesheet" href="modules/a1.css?v=20260524a" />
   <link rel="stylesheet" href="modules/a2.css" />
   <link rel="stylesheet" href="modules/a3.css?v=20260524a" />
   <link rel="stylesheet" href="modules/a4.css" />
-  <link rel="stylesheet" href="modules/a5.css?v=20260524b" />
+  <link rel="stylesheet" href="modules/a5.css?v=20260524d" />
   <link rel="stylesheet" href="modules/a6.css" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
@@ -148,7 +152,7 @@
       <input
         id="url-input"
         type="text"
-        placeholder="或粘贴抖音/B站视频链接…"
+        placeholder="请粘贴哔哩哔哩/YouTube视频链接"
         class="flex-1 bg-inkSoft border border-inkLine rounded-xl2 px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-brand transition"
       />
       <button
@@ -211,8 +215,8 @@
       <aside class="w-44 shrink-0 self-start sticky top-6">
         <nav class="tab-nav-vertical bg-inkSoft rounded-xl2 p-2 flex flex-col gap-1">
           <button class="tab-btn active" data-tab="summary">AI 摘要</button>
-          <button class="tab-btn" data-tab="cards">知识卡片</button>
           <button class="tab-btn" data-tab="graph">概念图谱</button>
+          <button class="tab-btn" data-tab="cards">知识卡片</button>
           <button class="tab-btn" data-tab="chat">AI 追问</button>
           <button class="tab-btn" data-tab="quiz">知识测验</button>
         </nav>
@@ -407,7 +411,7 @@
   </div>
 
   <!-- 主脚本（含 huguangyu 新增的 summary tab 逻辑） -->
-  <script src="app.js?v=20260524c" charset="utf-8"></script>
+  <script src="app.js?v=20260524d" charset="utf-8"></script>
 
   <!-- A1-A6 模块脚本（A6 纯 CSS 无 JS） -->
   <script src="modules/a1.js?v=20260524a"></script>
