@@ -304,20 +304,21 @@ function buildMarkdown(d) {
     L.push("");
   }
 
-  if (Array.isArray(d.quiz) && d.quiz.length) {
-    L.push("## 自测题", "");
-    const letters = ["A", "B", "C", "D"];
-    d.quiz.forEach((q, i) => {
-      L.push(`### ${i + 1}. ${q.question}`, "");
-      (q.options || []).forEach((o, j) => L.push(`- ${letters[j]}. ${o}`));
-      L.push("", `**答案：${q.answer}** —— ${q.explanation || ""}`, "");
-    });
-  }
+  // 自测题不进笔记摘要（知识测验 Tab 已经有完整交互版，重复无意义）
 
   if (Array.isArray(d.follow_up_questions) && d.follow_up_questions.length) {
     L.push("## 延伸思考", "");
-    d.follow_up_questions.forEach((q) => L.push(`- ${q}`));
-    L.push("");
+    d.follow_up_questions.forEach((q, i) => {
+      // 转成卡片式 HTML（marked 透传 raw HTML）；q 文本手工 escape
+      const safe = String(q ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      L.push(
+        `<div class="follow-up-card"><span class="follow-up-num">${i + 1}</span><span class="follow-up-text">${safe}</span></div>`,
+        ""
+      );
+    });
   }
 
   L.push("---", "", `*由「科普解构器」自动生成 · douyinhackathon.xinguangtreehole.com*`);
@@ -382,10 +383,22 @@ function saveCurrentAnalysis(data, taskId) {
     source_value: src?.value || "",
     savedAt: Date.now(),
     result: data,
+    chatHistory: [],  // 后续每次 sendChat 会 patch 进来
   };
   saveHistoryItem(item);
   renderHistory();
   if (taskId) state.pendingSources.delete(taskId);
+}
+
+/* sendChat 每次助手回复后调，把当前 state.chatHistory patch 进 localStorage 历史项。
+   返回首页再点回来时，恢复出来不会丢对话。 */
+function saveChatHistoryToCurrentItem() {
+  if (!state.taskId) return;
+  const arr = loadHistory();
+  const idx = arr.findIndex((x) => x.id === state.taskId);
+  if (idx < 0) return;
+  arr[idx] = { ...arr[idx], chatHistory: [...state.chatHistory] };
+  writeHistory(arr);
 }
 
 function formatRelativeTime(ts) {
@@ -441,6 +454,11 @@ function renderHistory() {
       state.taskId = it.id;
       state.fromHistory = true;
       renderResult(it.result);
+      // 恢复历史对话——renderResult 内部 setTimeout(300) 才切到结果区，等它布完再灌
+      const savedChat = Array.isArray(it.chatHistory) ? it.chatHistory : [];
+      if (savedChat.length) {
+        setTimeout(() => restoreChatHistory(savedChat), 360);
+      }
     });
   });
 
@@ -2146,7 +2164,27 @@ async function sendChat() {
   thinking.innerHTML = window.marked ? marked.parse(reply) : escapeHtml(reply);
   state.chatHistory.push({ role: "assistant", text: reply });
   scrollChatToBottom();
+  // 持久化当前对话到 localStorage 历史项，刷新/返回首页再回来不丢
+  saveChatHistoryToCurrentItem();
 }
+/* 用 localStorage 里存的 chatHistory 重画 chat-messages 区域。renderResult
+   会清成默认 greeting，这里在它之后再灌历史消息进去。 */
+function restoreChatHistory(history) {
+  state.chatHistory = history.slice();  // copy
+  const msgsEl = $("#chat-messages");
+  if (!msgsEl) return;
+  // 保留 greeting，append 历史消息
+  history.forEach((m) => {
+    const div = document.createElement("div");
+    div.className = `chat-bubble ${m.role === "assistant" ? "assistant" : "user"}`;
+    div.innerHTML = m.role === "assistant" && window.marked
+      ? marked.parse(m.text || "")
+      : escapeHtml(m.text || "");
+    msgsEl.appendChild(div);
+  });
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
 function appendChat(role, text) {
   const div = document.createElement("div");
   div.className = `chat-bubble ${role}`;

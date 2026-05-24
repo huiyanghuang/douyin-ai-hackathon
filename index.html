@@ -51,14 +51,14 @@
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 
   <!-- 主样式 -->
-  <link rel="stylesheet" href="styles.css?v=20260524d" />
+  <link rel="stylesheet" href="styles.css?v=20260524e" />
 
   <!-- A1-A6 模块样式（顺序：a1 → a6，A5/A6 必须在主样式之后） -->
   <link rel="stylesheet" href="modules/a1.css?v=20260524a" />
   <link rel="stylesheet" href="modules/a2.css" />
   <link rel="stylesheet" href="modules/a3.css?v=20260524a" />
   <link rel="stylesheet" href="modules/a4.css" />
-  <link rel="stylesheet" href="modules/a5.css?v=20260524d" />
+  <link rel="stylesheet" href="modules/a5.css?v=20260524e" />
   <link rel="stylesheet" href="modules/a6.css" />
 </head>
 <body class="bg-ink text-white antialiased min-h-screen">
@@ -306,7 +306,7 @@
 
     <!-- Tab 3: AI 追问 -->
     <div id="tab-chat" class="tab-panel hidden">
-      <div class="bg-inkSoft rounded-xl2 flex flex-col" style="height: 600px">
+      <div class="bg-inkSoft rounded-xl2 flex flex-col" style="height: calc(100vh - 180px); min-height: 520px">
         <div id="chat-suggestions" class="p-4 border-b border-inkLine flex flex-wrap gap-2"></div>
         <div id="chat-messages" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
         <div class="p-4 border-t border-inkLine flex gap-2">
@@ -411,7 +411,7 @@
   </div>
 
   <!-- 主脚本（含 huguangyu 新增的 summary tab 逻辑） -->
-  <script src="app.js?v=20260524d" charset="utf-8"></script>
+  <script src="app.js?v=20260524e" charset="utf-8"></script>
 
   <!-- A1-A6 模块脚本（A6 纯 CSS 无 JS） -->
   <script src="modules/a1.js?v=20260524a"></script>

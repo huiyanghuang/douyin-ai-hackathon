@@ -294,6 +294,17 @@
   background: rgba(99, 102, 241, 0.1) !important;
   color: #4f46e5 !important;
 }
+:root[data-theme="light"] .follow-up-card {
+  background: rgba(99, 102, 241, 0.06) !important;
+  border-color: rgba(99, 102, 241, 0.18) !important;
+  border-left-color: #6366f1 !important;
+}
+:root[data-theme="light"] .follow-up-card:hover {
+  background: rgba(99, 102, 241, 0.12) !important;
+}
+:root[data-theme="light"] .follow-up-text {
+  color: var(--a5-text) !important;
+}
 
 /* Toast 浅色主题：A6 把 toast 背景改成 rgba(255,255,255,0.85) 但文字还是白色 */
 :root[data-theme="light"] .toast               { color: var(--a5-text) !important; }
