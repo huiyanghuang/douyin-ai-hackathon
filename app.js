@@ -1085,7 +1085,7 @@ function bindTabs() {
 }
 function switchTab(name, opts = {}) {
   $$(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
-  ["cards", "graph", "chat", "quiz", "summary"].forEach((t) => {
+  ["summary", "graph", "cards", "chat", "quiz"].forEach((t) => {
     const panel = $(`#tab-${t}`);
     if (!panel) return;
     const isActive = t === name;
@@ -1125,12 +1125,29 @@ function renderSummary() {
     el.innerHTML = `<div class="empty-state py-10">还没有分析结果可摘要</div>`;
     return;
   }
-  const md = buildSummaryMarkdown(state.result);
+  // 直接渲染完整笔记 .md（跟点"下载笔记"按钮拿到的内容一致）
+  const md = buildMarkdown(state.result);
   if (window.marked) {
-    // marked v5+ 默认转义 HTML，足以应对来自 Gemini 的 user-generated 文本
     el.innerHTML = marked.parse(md);
   } else {
     el.innerHTML = `<pre style="white-space:pre-wrap;color:rgba(255,255,255,0.78)">${escapeHtml(md)}</pre>`;
+  }
+  // LaTeX 渲染（KaTeX auto-render）：$...$ 行内 / $$...$$ 块级 / \(\) / \[\]
+  if (window.renderMathInElement) {
+    try {
+      window.renderMathInElement(el, {
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "\\[", right: "\\]", display: true },
+          { left: "$",  right: "$",  display: false },
+          { left: "\\(", right: "\\)", display: false },
+        ],
+        throwOnError: false,
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+      });
+    } catch (e) {
+      console.warn("KaTeX render failed:", e);
+    }
   }
 }
 
@@ -2018,11 +2035,30 @@ function stopTour(ctx) {
 function highlightConceptCard(name) {
   const card = $(`#concept-grid .concept-card[data-concept="${cssEscape(name)}"]`);
   if (!card) return;
-  card.scrollIntoView({ behavior: "smooth", block: "center" });
+  // 立刻打 highlight 类（视觉反馈不延迟）
   card.classList.remove("is-highlight");
   void card.offsetWidth;
   card.classList.add("is-highlight");
   setTimeout(() => card.classList.remove("is-highlight"), 1800);
+  // 等 tab fade-in 动画跑完再 scroll，否则 layout 还在抖、scrollIntoView 算偏
+  // 用双保险：scrollIntoView center + getBoundingClientRect 手工居中兜底
+  setTimeout(() => {
+    try {
+      card.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    } catch {}
+    // 二次确认：rAF 后再用 viewport rect 算实际中心，差距超过 30px 时手工 scrollTo 兜底
+    requestAnimationFrame(() => {
+      const rect = card.getBoundingClientRect();
+      const cardCenter = rect.top + rect.height / 2;
+      const viewCenter = window.innerHeight / 2;
+      if (Math.abs(cardCenter - viewCenter) > 30) {
+        window.scrollTo({
+          top: Math.max(0, window.scrollY + (cardCenter - viewCenter)),
+          behavior: "smooth",
+        });
+      }
+    });
+  }, 320);
 }
 
 function cssEscape(s) {
