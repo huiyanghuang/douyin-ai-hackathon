@@ -51,15 +51,14 @@
   letter-spacing: 0.05em;
 }
 
+/* html2canvas 不支持 background-clip:text + color:transparent 渐变文字技巧
+   （结果：文字透明 + 露出背景色块，标题/分数全看不见）。改成纯色保证 PNG 渲染。 */
 .a3-video-title {
   font-size: 22px;
   font-weight: 700;
   line-height: 1.35;
   margin-bottom: 22px;
-  background: linear-gradient(135deg, #c7d2fe, #fff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #ffffff;
 }
 
 .a3-score-row {
@@ -71,12 +70,10 @@
 .a3-score {
   font-size: 64px;
   font-weight: 900;
-  background: linear-gradient(135deg, #fde68a, #f472b6, #818cf8);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: #fbbf24;  /* 琥珀金，跟 A2 庆祝主色一致 */
   line-height: 1;
   letter-spacing: -0.03em;
+  text-shadow: 0 2px 12px rgba(251, 191, 36, 0.35);  /* 软光增加金属质感 */
 }
 .a3-score-label {
   font-size: 16px;

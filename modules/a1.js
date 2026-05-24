@@ -1,40 +1,18 @@
 /* ============================================================
- * A1 · 四 Tab 联动模块
- * 监听图谱节点点击 → 浮出 chip → 点击 chip 跳卡片 Tab + 高亮匹配
- * 概念卡片 + 高亮匹配的 key_points 时间戳条目。
+ * A1 · 图谱节点点击 → 高亮对应 key_points 条目
  *
- * 隔离策略：
- *   - 不修改 main 现有任何函数
- *   - 用 document.addEventListener('click', ..., true) capture 阶段拦截
- *     节点点击（先于 D3 的 stopPropagation 执行）
- *   - 只读 main 的 switchTab 函数和 #concept-grid / #key-points-list DOM
+ * 主 app.js 在 D3 节点 click 里已经做了：
+ *   switchTab("cards", { highlight: d.id })
+ * 自动跳卡片 Tab + 高亮匹配概念卡。所以原版 A1 的"浮动 chip 提示再跳"
+ * 完全冗余——chip 出现的同时 tab 已经切走，chip 被盖死。
+ *
+ * 现版只保留一件主 app 没做的事：高亮 key_points 里提到该概念的条目。
+ * 用 capture 阶段监听，跟 D3 的 click handler 并行不阻塞。
  * ============================================================ */
 (function () {
   "use strict";
 
-  let chipEl = null;
-  let chipNameEl = null;
-  let currentName = null;
-  let hideTimer = null;
-
   function init() {
-    chipEl = document.getElementById("a1-chip");
-    chipNameEl = document.getElementById("a1-chip-name");
-    if (!chipEl || !chipNameEl) return;
-
-    const goBtn = document.getElementById("a1-chip-go");
-    const closeBtn = document.getElementById("a1-chip-close");
-    if (goBtn) goBtn.addEventListener("click", goCards);
-    if (closeBtn) closeBtn.addEventListener("click", hideChip);
-
-    // 整个 chip 区域可点（除关闭键以外）也触发跳转
-    chipEl.addEventListener("click", (e) => {
-      if (e.target === closeBtn || closeBtn?.contains(e.target)) return;
-      if (e.target === goBtn || goBtn?.contains(e.target)) return;
-      goCards();
-    });
-
-    // capture 阶段监听节点点击 —— 先于 D3 内部 stopPropagation
     document.addEventListener("click", onAnyClick, true);
   }
 
@@ -45,33 +23,8 @@
     if (!text) return;
     const name = (text.textContent || "").trim();
     if (!name) return;
-    showChip(name);
-  }
-
-  function showChip(name) {
-    currentName = name;
-    chipNameEl.textContent = name;
-    chipEl.classList.remove("hidden");
-    requestAnimationFrame(() => chipEl.classList.add("is-show"));
-    clearTimeout(hideTimer);
-    hideTimer = setTimeout(hideChip, 5000);
-  }
-
-  function hideChip() {
-    if (!chipEl) return;
-    chipEl.classList.remove("is-show");
-    clearTimeout(hideTimer);
-    setTimeout(() => chipEl?.classList.add("hidden"), 280);
-  }
-
-  function goCards() {
-    if (!currentName) return;
-    const name = currentName;
-    hideChip();
-    if (typeof window.switchTab === "function") {
-      window.switchTab("cards", { highlight: name });
-    }
-    requestAnimationFrame(() => highlightKeyPoints(name));
+    // 等主 app 把 tab 切到 cards 之后再高亮 key_points
+    setTimeout(() => highlightKeyPoints(name), 60);
   }
 
   function highlightKeyPoints(name) {
@@ -98,6 +51,5 @@
     init();
   }
 
-  // 暴露给外部（调试或集成时手动触发）
-  window.A1 = { showChip, hideChip, goCards, highlightKeyPoints };
+  window.A1 = { highlightKeyPoints };
 })();
